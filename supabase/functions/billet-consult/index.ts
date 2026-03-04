@@ -5,156 +5,126 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function getApiBaseUrl(config: any): string {
-  return config.is_sandbox
-    ? 'https://api-sandbox.transfeera.com'
-    : 'https://api.transfeera.com';
-}
+// ONZ does not have a billet consult endpoint.
+// This function parses the barcode locally to extract basic info.
 
-function toNumber(value: unknown): number | undefined {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
+function parseBoletoBarcode(code: string): any {
+  const clean = code.replace(/[\s.\-]/g, '');
+  const isBoleto = clean.length === 47 || clean.length === 48;
+  const isConvenio = clean.length === 48 && ['8', '9'].includes(clean[0]);
+
+  if (!isBoleto && !isConvenio) {
+    return { valid: false, error: 'Código de barras inválido' };
+  }
+
+  if (isConvenio) {
+    // Convênio (concessionárias, IPTU, etc.)
+    const segmentId = clean[1];
+    const segmentMap: Record<string, string> = {
+      '1': 'Prefeituras', '2': 'Saneamento', '3': 'Energia/Gás',
+      '4': 'Telecomunicações', '5': 'Órgãos governamentais',
+      '6': 'Taxas e tributos', '7': 'Multas de trânsito',
+      '9': 'Outros',
+    };
+    // Value is embedded in positions 4-14 (with 2 decimal places)
+    const rawValue = clean.substring(4, 15);
+    const value = parseInt(rawValue, 10) / 100;
+
+    return {
+      valid: true,
+      type: 'convenio',
+      segment: segmentMap[segmentId] || 'Outros',
+      value: value > 0 ? value : null,
+      barcode: clean,
+    };
+  }
+
+  // Boleto bancário
+  const bankCode = clean.substring(0, 3);
+  // Factor date (from position 33-36 in barcode, or 5-9 in linha digitável)
+  // Value in cents (positions 37-46 in barcode)
+  // For linha digitável (47 digits), the factor and value positions differ
+  let value: number | null = null;
+  if (clean.length === 47) {
+    const rawValue = clean.substring(37, 47);
+    value = parseInt(rawValue, 10) / 100;
+  }
+
+  const bankNames: Record<string, string> = {
+    '001': 'Banco do Brasil', '033': 'Santander', '104': 'Caixa Econômica',
+    '237': 'Bradesco', '341': 'Itaú', '356': 'ABN AMRO', '389': 'Mercantil',
+    '399': 'HSBC', '422': 'Safra', '453': 'Rural', '633': 'Rendimento',
+    '652': 'Itaú BBA', '745': 'Citibank', '756': 'Sicoob',
+  };
+
+  return {
+    valid: true,
+    type: 'boleto',
+    bank_code: bankCode,
+    bank_name: bankNames[bankCode] || `Banco ${bankCode}`,
+    value: value && value > 0 ? value : null,
+    barcode: clean,
+  };
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const body = await req.json();
     const { company_id, codigo_barras } = body;
 
     if (!company_id || !codigo_barras) {
-      return new Response(
-        JSON.stringify({ error: 'company_id and codigo_barras are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'company_id and codigo_barras are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Get config
-    const { data: config } = await supabase
-      .from('pix_configs').select('*')
-      .eq('company_id', company_id).eq('is_active', true)
-      .in('purpose', ['cash_out', 'both']).limit(1).maybeSingle();
-
-    if (!config) {
-      return new Response(
-        JSON.stringify({ error: 'Configuração Pix não encontrada.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get auth token
-    const authResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/pix-auth`, {
-      method: 'POST',
-      headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ company_id, purpose: 'cash_out' }),
-    });
-
-    if (!authResponse.ok) {
-      return new Response(
-        JSON.stringify({ error: 'Falha ao autenticar com o provedor' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { access_token } = await authResponse.json();
-    const apiBase = getApiBaseUrl(config);
     const cleanBarcode = codigo_barras.replace(/[\s.\-]/g, '');
+    console.log(`[billet-consult] Local parsing: ${cleanBarcode}`);
 
-    console.log(`[billet-consult] Consulting billet: ${cleanBarcode}`);
+    const parsed = parseBoletoBarcode(cleanBarcode);
 
-    const consultResponse = await fetch(`${apiBase}/billet/consult?code=${encodeURIComponent(cleanBarcode)}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${access_token}`,
-        'User-Agent': 'PixContabil (contato@pixcontabil.com.br)',
-      },
-    });
-
-    if (!consultResponse.ok) {
-      const errText = await consultResponse.text();
-      console.error('[billet-consult] Consult failed:', errText);
-      return new Response(
-        JSON.stringify({ error: 'Falha ao consultar boleto', details: errText }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!parsed.valid) {
+      return new Response(JSON.stringify({ error: parsed.error || 'Código inválido' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const billetInfo = await consultResponse.json();
-    console.log('[billet-consult] Result:', JSON.stringify(billetInfo));
-
-    const paymentInfo = billetInfo?.payment_info ?? {};
-    const barcodeDetails = billetInfo?.barcode_details ?? {};
-
-    const originalValue = toNumber(
-      paymentInfo.original_value ?? barcodeDetails.value ?? billetInfo?.value
-    );
-
-    const updatedValue = toNumber(
-      paymentInfo.total_updated_value ?? billetInfo?.total_updated_value ?? originalValue
-    );
-
-    const fineValue = toNumber(paymentInfo.fine_value ?? billetInfo?.fine_value);
-    const interestValue = toNumber(paymentInfo.interest_value ?? billetInfo?.interest_value);
-    const discountValue = toNumber(
-      paymentInfo.total_discount_value ?? paymentInfo.discount_value ?? billetInfo?.discount_value
-    );
-
-    const dueDate = paymentInfo.due_date ?? barcodeDetails.due_date ?? billetInfo?.due_date;
-    const recipientName = paymentInfo.recipient_name ?? billetInfo?.recipient_name;
-    const recipientDocument = paymentInfo.recipient_document ?? billetInfo?.recipient_document;
-
-    // Transfeera can return nested fields in payment_info/barcode_details.
-    // Normalize the payload for frontend compatibility.
-    return new Response(
-      JSON.stringify({
-        success: true,
-        value: originalValue,
-        total_updated_value: updatedValue,
-        due_date: dueDate,
-        fine_value: fineValue,
-        interest_value: interestValue,
-        discount_value: discountValue,
-        recipient_name: recipientName,
-        recipient_document: recipientDocument,
-        type: barcodeDetails.type ?? billetInfo?.type,
-        status: billetInfo?.status,
-        digitable_line: barcodeDetails.digitable_line ?? billetInfo?.digitable_line,
-        barcode: barcodeDetails.barcode ?? billetInfo?.barcode ?? cleanBarcode,
-        raw: billetInfo,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({
+      success: true,
+      value: parsed.value,
+      total_updated_value: parsed.value,
+      due_date: null,
+      fine_value: null,
+      interest_value: null,
+      discount_value: null,
+      recipient_name: parsed.bank_name || parsed.segment || null,
+      recipient_document: null,
+      type: parsed.type,
+      status: null,
+      digitable_line: cleanBarcode,
+      barcode: cleanBarcode,
+      raw: parsed,
+      message: 'Dados extraídos localmente do código de barras. Valor atualizado será confirmado ao efetuar o pagamento.',
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     console.error('[billet-consult] Error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
