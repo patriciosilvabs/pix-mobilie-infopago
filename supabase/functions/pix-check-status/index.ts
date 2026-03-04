@@ -5,99 +5,79 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-function getApiBaseUrl(config: any): string {
-  return config.is_sandbox
-    ? 'https://api-sandbox.transfeera.com'
-    : 'https://api.transfeera.com';
+async function callOnzProxy(url: string, method: string, headers: Record<string, string>, body?: any) {
+  const proxyUrl = Deno.env.get('ONZ_PROXY_URL');
+  const proxyApiKey = Deno.env.get('ONZ_PROXY_API_KEY');
+  if (!proxyUrl || !proxyApiKey) throw new Error('ONZ proxy not configured');
+  const proxyPayload: any = { url, method, headers };
+  if (body !== undefined) proxyPayload.body = body;
+  const resp = await fetch(`${proxyUrl}/proxy`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-proxy-api-key': proxyApiKey },
+    body: JSON.stringify(proxyPayload),
+  });
+  const result = await resp.json();
+  return { ok: result.status >= 200 && result.status < 300, status: result.status, data: result.data };
 }
 
-function parseIdsFromExternalId(externalId: string | null | undefined): { batchId: string | null; transferId: string | null } {
-  const raw = String(externalId || '').trim();
-  if (!raw) return { batchId: null, transferId: null };
-
-  const [batchPart, transferPart] = raw.split(':');
-  const batchId = batchPart?.trim() || null;
-  const transferId = transferPart?.trim() || null;
-
-  return { batchId, transferId };
-}
-
-function extractFirstTransferFromBatchPayload(payload: any): any | null {
-  if (!payload) return null;
-  if (Array.isArray(payload)) return payload[0] ?? null;
-  if (Array.isArray(payload?.transfers)) return payload.transfers[0] ?? null;
-  if (Array.isArray(payload?.data)) return payload.data[0] ?? null;
-  if (Array.isArray(payload?.items)) return payload.items[0] ?? null;
-  if (payload?.id || payload?.transfer_id) return payload;
-  return null;
-}
+// ONZ status mapping
+const ONZ_STATUS_MAP: Record<string, string> = {
+  'PROCESSING': 'pending',
+  'LIQUIDATED': 'completed',
+  'CANCELED': 'failed',
+  'REFUNDED': 'completed', // transaction itself is completed, refund tracked separately
+  'PARTIALLY_REFUNDED': 'completed',
+};
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } });
 
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const url = new URL(req.url);
     let transaction_id = url.searchParams.get('transaction_id');
     let company_id = url.searchParams.get('company_id');
-    let transfer_id = url.searchParams.get('transfer_id');
-    let batch_id = url.searchParams.get('batch_id');
-    let transactionExternalId: string | null = null;
+    let end_to_end_id = url.searchParams.get('end_to_end_id');
+    let onz_id = url.searchParams.get('onz_id');
 
     if (req.method === 'POST') {
       const body = await req.json();
       transaction_id = transaction_id || body.transaction_id;
       company_id = company_id || body.company_id;
-      transfer_id = transfer_id || body.transfer_id;
-      batch_id = batch_id || body.batch_id;
+      end_to_end_id = end_to_end_id || body.end_to_end_id || body.transfer_id;
+      onz_id = onz_id || body.onz_id || body.batch_id;
     }
 
     // Get identifiers from transaction if not provided
-    if (transaction_id && (!company_id || !transfer_id || !batch_id)) {
+    if (transaction_id && (!company_id || !end_to_end_id)) {
       const { data: txData } = await supabase
         .from('transactions')
-        .select('company_id, external_id')
-        .eq('id', transaction_id)
-        .single();
-
+        .select('company_id, external_id, pix_e2eid')
+        .eq('id', transaction_id).single();
       if (txData) {
         company_id = company_id || txData.company_id;
-        transactionExternalId = txData.external_id || null;
-
-        const parsedIds = parseIdsFromExternalId(txData.external_id);
-        batch_id = batch_id || parsedIds.batchId;
-        transfer_id = transfer_id || parsedIds.transferId;
+        end_to_end_id = end_to_end_id || txData.pix_e2eid;
+        onz_id = onz_id || txData.external_id;
       }
     }
 
-    if (!company_id || (!transfer_id && !batch_id)) {
-      return new Response(
-        JSON.stringify({ error: 'company_id and at least one identifier (transfer_id, batch_id, or transaction_id) are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!company_id || (!end_to_end_id && !onz_id)) {
+      return new Response(JSON.stringify({ error: 'company_id and end_to_end_id (or transaction_id) are required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Get config
@@ -108,12 +88,9 @@ Deno.serve(async (req) => {
         .eq('company_id', company_id).eq('is_active', true).eq('purpose', p).single();
       if (c) { config = c; break; }
     }
-
     if (!config) {
-      return new Response(
-        JSON.stringify({ error: 'Pix configuration not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Pix configuration not found' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Get auth token
@@ -122,145 +99,77 @@ Deno.serve(async (req) => {
       headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
       body: JSON.stringify({ company_id }),
     });
-
     if (!authResponse.ok) {
-      return new Response(
-        JSON.stringify({ error: 'Failed to authenticate with provider' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Failed to authenticate with ONZ' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
     const { access_token } = await authResponse.json();
-    const apiBase = getApiBaseUrl(config);
+    const baseUrl = config.base_url.replace(/\/$/, '');
 
-    // Transfeera: prioritize transfer status; fallback to batch transfers when transfer_id is not available yet
     let statusData: any = null;
-    let resolvedTransferId = transfer_id || null;
-    let resolvedBatchId = batch_id || null;
 
     try {
-      const getTransferStatus = async (id: string) => {
-        const response = await fetch(`${apiBase}/transfer/${id}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'User-Agent': 'PixContabil (contato@pixcontabil.com.br)',
-          },
+      // ONZ: GET /pix/payments/{endToEndId}
+      if (end_to_end_id) {
+        const result = await callOnzProxy(`${baseUrl}/pix/payments/${encodeURIComponent(end_to_end_id)}`, 'GET', {
+          'Authorization': `Bearer ${access_token}`,
         });
-
-        const payload = await response.json().catch(() => null);
-        return { ok: response.ok, payload };
-      };
-
-      const getBatchTransfers = async (id: string) => {
-        const response = await fetch(`${apiBase}/batch/${id}/transfer`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'User-Agent': 'PixContabil (contato@pixcontabil.com.br)',
-          },
-        });
-
-        const payload = await response.json().catch(() => null);
-        return { ok: response.ok, payload };
-      };
-
-      if (resolvedTransferId) {
-        const transferResult = await getTransferStatus(resolvedTransferId);
-        if (transferResult.ok && transferResult.payload) {
-          statusData = transferResult.payload;
+        if (result.ok && result.data) {
+          statusData = result.data?.data || result.data;
         }
       }
 
-      if ((!statusData || !statusData.status) && resolvedBatchId) {
-        const batchResult = await getBatchTransfers(resolvedBatchId);
-
-        if (batchResult.ok && batchResult.payload) {
-          const transferFromBatch = extractFirstTransferFromBatchPayload(batchResult.payload);
-          if (transferFromBatch) {
-            statusData = transferFromBatch;
-            resolvedTransferId = resolvedTransferId || String(transferFromBatch.transfer_id || transferFromBatch.id || '').trim() || null;
-          } else if (batchResult.payload?.status) {
-            statusData = batchResult.payload;
-          }
-        }
-      }
-
-      if ((!statusData || !statusData.status) && resolvedTransferId) {
-        const transferResult = await getTransferStatus(resolvedTransferId);
-        if (transferResult.ok && transferResult.payload) {
-          statusData = transferResult.payload;
+      // Fallback: try by ONZ transaction ID via accounts/transactions/{id}/details
+      if (!statusData && onz_id) {
+        const result = await callOnzProxy(`${baseUrl}/accounts/transactions/${encodeURIComponent(onz_id)}/details`, 'GET', {
+          'Authorization': `Bearer ${access_token}`,
+        });
+        if (result.ok && result.data) {
+          const details = Array.isArray(result.data) ? result.data[0] : result.data;
+          statusData = details;
         }
       }
     } catch (e) {
-      return new Response(
-        JSON.stringify({ error: 'Falha na conexão com Transfeera', details: e.message }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Falha na conexão com ONZ', details: e.message }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     if (!statusData) {
-      return new Response(
-        JSON.stringify({ error: 'Não foi possível obter status da transferência' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return new Response(JSON.stringify({ error: 'Não foi possível obter status da transferência' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log('[pix-check-status] Status received:', JSON.stringify(statusData));
+    console.log('[pix-check-status] ONZ status received:', JSON.stringify(statusData));
 
-    // Normalize Transfeera status
-    const rawStatus = String(statusData.status || statusData.transfer_status || '').toUpperCase();
-    const statusMap: Record<string, string> = {
-      'FINALIZADO': 'completed',
-      'TRANSFERENCIA_REALIZADA': 'completed',
-      'TRANSFERENCIA_CONFIRMADA': 'completed',
-      'CRIADO': 'pending',
-      'RECEBIDO': 'pending',
-      'TRANSFERENCIA_CRIADA': 'pending',
-      'LOTE_CRIADO': 'pending',
-      'FALHA': 'failed',
-      'DEVOLVIDO': 'refunded',
-      'ESTORNADO': 'refunded',
-    };
-    const internalStatus = statusMap[rawStatus] || 'pending';
+    const rawStatus = String(statusData.status || '').replace(/,/g, '').toUpperCase();
+    const internalStatus = ONZ_STATUS_MAP[rawStatus] || 'pending';
     const isCompleted = internalStatus === 'completed';
 
     if (transaction_id) {
       const supabaseAdmin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const existingIds = parseIdsFromExternalId(transactionExternalId);
       const updateData: any = {
         status: internalStatus,
         pix_provider_response: statusData,
-        pix_e2eid: statusData.end_to_end_id || statusData.e2e_id || statusData.pix_end2end_id || statusData.pix_e2eid || null,
+        pix_e2eid: statusData.endToEndId || end_to_end_id || null,
       };
-
-      if (resolvedBatchId && resolvedTransferId && (!existingIds.transferId || existingIds.transferId !== resolvedTransferId)) {
-        updateData.external_id = `${resolvedBatchId}:${resolvedTransferId}`;
-      }
-
       if (isCompleted) updateData.paid_at = new Date().toISOString();
       await supabaseAdmin.from('transactions').update(updateData).eq('id', transaction_id);
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        transfer_id: resolvedTransferId,
-        batch_id: resolvedBatchId,
-        status: statusData.status,
-        internal_status: internalStatus,
-        is_completed: isCompleted,
-        provider: 'transfeera',
-        payload: statusData,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({
+      success: true,
+      end_to_end_id: statusData.endToEndId || end_to_end_id,
+      onz_id: statusData.id || onz_id,
+      status: statusData.status,
+      internal_status: internalStatus,
+      is_completed: isCompleted,
+      provider: 'onz',
+      payload: statusData,
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     console.error('[pix-check-status] Error:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
