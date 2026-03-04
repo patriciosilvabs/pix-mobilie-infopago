@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 
 const PIX_PROVIDERS = [
-  { value: "transfeera", label: "Transfeera" },
+  { value: "onz", label: "ONZ Infopago" },
 ];
 
 const PIX_KEY_TYPES = [
@@ -54,20 +54,20 @@ const PROVIDER_CONFIG: Record<string, {
   credentialsDescription: string;
   urls: { production: string; sandbox: string };
 }> = {
-  transfeera: {
+  onz: {
     clientIdLabel: 'Client ID',
-    clientIdPlaceholder: 'seu_client_id_transfeera',
-    clientIdHelp: 'Obtido no painel Transfeera > Configurações > API.',
+    clientIdPlaceholder: 'seu_client_id_onz',
+    clientIdHelp: 'Obtido no painel ONZ Infopago > Configurações > API.',
     showClientSecret: true,
     clientSecretLabel: 'Client Secret',
-    clientSecretHelp: 'Obtido no painel Transfeera > Configurações > API.',
+    clientSecretHelp: 'Obtido no painel ONZ Infopago > Configurações > API.',
     showCertificate: false,
     showCompanyId: false,
-    credentialsTitle: 'Credenciais Transfeera',
-    credentialsDescription: 'Credenciais OAuth2 (Client Credentials)',
+    credentialsTitle: 'Credenciais ONZ Infopago',
+    credentialsDescription: 'Credenciais OAuth2 (Client Credentials) via proxy mTLS',
     urls: {
-      production: 'https://api.transfeera.com',
-      sandbox: 'https://api-sandbox.transfeera.com',
+      production: 'https://secureapi.bancodigital.onz.software/api/v2',
+      sandbox: 'https://secureapi.bancodigital.hmg.onz.software/api/v2',
     },
   },
 };
@@ -241,7 +241,7 @@ function ProviderConfigForm({
 
       if (data?.success) {
         if (!silent) {
-          toast({ title: "Webhook registrado!", description: data.message || "Webhook configurado na Transfeera." });
+          toast({ title: "Webhook registrado!", description: data.message || "Webhook configurado na ONZ." });
         }
         return true;
       } else {
@@ -300,7 +300,7 @@ function ProviderConfigForm({
         const webhookOk = await handleRegisterWebhook(true);
         if (webhookOk) {
           setTestMessage(prev => prev + ' Webhook registrado automaticamente.');
-          toast({ title: "Tudo pronto!", description: "Conexão validada e webhook registrado na Transfeera." });
+          toast({ title: "Tudo pronto!", description: "Conexão validada e webhook registrado na ONZ." });
         }
       }
     } catch (e: any) {
