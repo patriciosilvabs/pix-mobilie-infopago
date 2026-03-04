@@ -1,0 +1,2 @@
+ALTER TABLE public.pix_configs DROP CONSTRAINT pix_configs_provider_check;
+ALTER TABLE public.pix_configs ADD CONSTRAINT pix_configs_provider_check CHECK (provider = ANY (ARRAY['woovi'::text, 'onz'::text, 'transfeera'::text, 'efi'::text, 'paggue'::text, 'inter'::text]));

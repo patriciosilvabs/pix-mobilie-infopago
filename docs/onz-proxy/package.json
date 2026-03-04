@@ -1,0 +1,15 @@
+{
+  "name": "onz-mtls-proxy",
+  "version": "1.0.0",
+  "description": "mTLS proxy for ONZ Infopago (bypasses rustls SAN requirement)",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

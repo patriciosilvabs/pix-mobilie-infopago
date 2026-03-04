@@ -1,0 +1,1 @@
+ALTER TABLE public.company_members ADD COLUMN can_view_balance BOOLEAN NOT NULL DEFAULT false;

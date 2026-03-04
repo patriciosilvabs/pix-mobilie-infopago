@@ -1,0 +1,1 @@
+ALTER TYPE pix_type ADD VALUE 'cash';
