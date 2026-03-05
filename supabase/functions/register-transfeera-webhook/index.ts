@@ -65,8 +65,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 1. Authenticate DIRECTLY with Transfeera (always fresh token, never cached)
+    // 1. Authenticate DIRECTLY with Transfeera using dedicated secrets
     const isSandbox = config.is_sandbox;
+    const transfeeraClientId = Deno.env.get('TRANSFEERA_CLIENT_ID');
+    const transfeeraClientSecret = Deno.env.get('TRANSFEERA_CLIENT_SECRET');
+
+    if (!transfeeraClientId || !transfeeraClientSecret) {
+      return new Response(
+        JSON.stringify({ error: 'Credenciais Transfeera não configuradas. Configure TRANSFEERA_CLIENT_ID e TRANSFEERA_CLIENT_SECRET.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const authUrl = isSandbox
       ? 'https://login-api-sandbox.transfeera.com/authorization'
       : 'https://login-api.transfeera.com/authorization';
@@ -81,8 +91,8 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         grant_type: 'client_credentials',
-        client_id: config.client_id,
-        client_secret: config.client_secret_encrypted,
+        client_id: transfeeraClientId,
+        client_secret: transfeeraClientSecret,
       }),
     });
 
