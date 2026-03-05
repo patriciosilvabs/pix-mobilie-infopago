@@ -1,39 +1,24 @@
 
 
-## Registro de Pagamento em Dinheiro
+## Plano: Remover registro automático de webhook Transfeera e usar configuração manual via painel ONZ
 
-O objetivo é adicionar um novo tipo de pagamento "Dinheiro" que permite registrar pagamentos realizados em espécie, com obrigatoriedade de anexar o comprovante (foto do recibo/cupom) e classificar contabilmente.
+### Contexto do problema
 
-### Como funciona
+O botão "Registrar Webhook" e o registro automático após teste de conexão chamam a Edge Function `register-transfeera-webhook`, que autentica na API da **Transfeera** (um provedor diferente da ONZ). Como o sistema agora usa exclusivamente ONZ Infopago, essas credenciais Transfeera retornam 401 Unauthorized. A ONZ não tem API para registro de webhook -- é feito manualmente no painel.
 
-Diferente dos demais tipos (Pix, Boleto), o pagamento em dinheiro nao chama nenhuma API externa. Ele apenas cria o registro da transacao no banco de dados com `pix_type = 'cash'` e `status = 'completed'`, e redireciona imediatamente para a tela de anexar comprovante (`/pix/receipt/:id`).
+### Mudanças
 
-### Alteracoes necessarias
+**1. Remover a Edge Function `register-transfeera-webhook`**
+- Deletar `supabase/functions/register-transfeera-webhook/index.ts`
 
-**1. Banco de dados** -- Adicionar `'cash'` ao enum `pix_type`
-- Executar migration: `ALTER TYPE pix_type ADD VALUE 'cash';`
-
-**2. Novo Drawer `CashPaymentDrawer`**
-- Formulario simples com: valor, nome do favorecido (quem recebeu o dinheiro), descricao opcional
-- Ao confirmar, cria a transacao via `supabase.from("transactions").insert(...)` com `pix_type: 'cash'`, `status: 'completed'`, `paid_at: now()`
-- Redireciona para `/pix/receipt/:transactionId` para anexar foto do recibo
-
-**3. Dashboard Mobile** -- Adicionar botao "DINHEIRO" nas acoes rapidas
-- Novo item no array `quickActions` com icone `Banknote` (lucide)
-- Abre o `CashPaymentDrawer` ao clicar
-- Feature key `dinheiro` para controle de permissoes
-
-**4. Pagina NewPayment** -- Adicionar aba "Dinheiro"
-- Nova tab no `TabsList` com o mesmo formulario simplificado (valor + favorecido)
-
-**5. Ajustes no fluxo de comprovantes pendentes**
-- `useDashboardData.ts`: incluir `pix_type = 'cash'` na lista de tipos que exigem comprovante manual (junto com qrcode, copy_paste, boleto)
-- `Transactions.tsx`: tratar o tipo `cash` na lista de transacoes (icone de notas/dinheiro, label "Dinheiro")
-
-### Secao tecnica
-
-- O enum `pix_type` precisa da migration SQL antes de poder inserir `'cash'`
-- O `CashPaymentDrawer` sera um Drawer (bottom-sheet) com 2 campos: valor obrigatorio e favorecido obrigatorio, seguido de botao "Registrar Pagamento"
-- A transacao ja nasce como `completed` pois o dinheiro ja foi entregue fisicamente
-- O sistema de comprovantes pendentes tratara `cash` igual a `qrcode`/`boleto` -- sem foto anexada = notificacao no dashboard
+**2. Atualizar `src/pages/settings/PixIntegration.tsx`**
+- Remover a função `handleRegisterWebhook` e o estado `isRegisteringWebhook`
+- Remover a chamada automática `handleRegisterWebhook(true)` de dentro de `handleTestConnection` (linhas 300-304)
+- Remover o botão "Registrar" do card de Webhook (linha 479-482)
+- Adicionar instruções textuais orientando o usuário a configurar o webhook manualmente no painel ONZ:
+  - Evento: `Transferência` e `Fila de Saída de Pagamentos`
+  - Método: POST
+  - URL: a URL exibida no campo (copiável)
+  - Header: `x-webhook-secret: <valor configurado>`
+- Simplificar a mensagem de sucesso no teste de conexão (sem mencionar webhook)
 
