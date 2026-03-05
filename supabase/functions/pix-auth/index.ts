@@ -13,11 +13,21 @@ async function callOnzProxy(url: string, method: string, headers: Record<string,
   const proxyPayload: any = { url, method, headers };
   if (body !== undefined) proxyPayload.body = body;
 
-  const resp = await fetch(`${proxyUrl}/proxy`, {
+  const fullUrl = `${proxyUrl}/proxy`;
+  console.log(`[callOnzProxy] POST ${fullUrl} -> ${url}`);
+
+  const resp = await fetch(fullUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-proxy-api-key': proxyApiKey },
     body: JSON.stringify(proxyPayload),
   });
+
+  const contentType = resp.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await resp.text();
+    console.error(`[callOnzProxy] Non-JSON response (${resp.status}): ${text.substring(0, 300)}`);
+    throw new Error(`Proxy retornou resposta não-JSON (HTTP ${resp.status}). Verifique se a URL do proxy está correta e o serviço está rodando.`);
+  }
 
   const result = await resp.json();
   return { ok: result.status >= 200 && result.status < 300, status: result.status, data: result.data };
