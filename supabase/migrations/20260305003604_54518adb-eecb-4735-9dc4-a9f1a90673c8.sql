@@ -1,0 +1,1 @@
+UPDATE public.pix_configs SET base_url = 'https://cashout.infopago.com.br/api/v2' WHERE base_url LIKE '%secureapi.bancodigital%';

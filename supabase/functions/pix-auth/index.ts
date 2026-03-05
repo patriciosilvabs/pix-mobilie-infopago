@@ -6,90 +6,33 @@ const corsHeaders = {
 };
 
 async function callOnzProxy(url: string, method: string, headers: Record<string, string>, body?: any) {
-  const proxyUrlRaw = Deno.env.get('ONZ_PROXY_URL');
-  const proxyApiKey = Deno.env.get('ONZ_PROXY_API_KEY');
-  if (!proxyUrlRaw || !proxyApiKey) {
-    throw new Error('ONZ proxy not configured (ONZ_PROXY_URL / ONZ_PROXY_API_KEY)');
-  }
+  const proxyUrl = (Deno.env.get('ONZ_PROXY_URL') || '').replace(/\/$/, '');
+  if (!proxyUrl) throw new Error('ONZ_PROXY_URL not configured');
 
-  const proxyUrl = proxyUrlRaw.replace(/\/$/, '');
-  const proxyPayload: any = { url, method, headers };
-  if (body !== undefined) proxyPayload.body = body;
-
-  const parseResponse = async (resp: Response) => {
-    const contentType = resp.headers.get('content-type') || '';
-    const text = await resp.text();
-
-    if (contentType.includes('application/json')) {
-      try {
-        return { json: JSON.parse(text), text };
-      } catch {
-        return { json: null as any, text };
-      }
-    }
-
-    return { json: null as any, text };
-  };
-
-  // Contract A: proxy genérico com POST /proxy
-  const genericProxyUrl = proxyUrl.endsWith('/proxy') ? proxyUrl : `${proxyUrl}/proxy`;
-  console.log(`[callOnzProxy] Trying generic proxy: ${genericProxyUrl}`);
-
-  const genericResp = await fetch(genericProxyUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-proxy-api-key': proxyApiKey,
-    },
-    body: JSON.stringify(proxyPayload),
-  });
-
-  const genericParsed = await parseResponse(genericResp);
-
-  if (genericParsed.json && typeof genericParsed.json.status === 'number') {
-    return {
-      ok: genericParsed.json.status >= 200 && genericParsed.json.status < 300,
-      status: genericParsed.json.status,
-      data: genericParsed.json.data,
-    };
-  }
-
-  // Se for 404 no /proxy, tenta Contract B (proxy roteado por path)
-  if (genericResp.status !== 404) {
-    const details = genericParsed.text?.substring(0, 300) || `HTTP ${genericResp.status}`;
-    throw new Error(`Proxy retornou resposta inválida: ${details}`);
-  }
-
-  // Contract B: proxy por rotas (/pix/* e /cashout/*)
   const target = new URL(url);
-  let targetPath = `${target.pathname}${target.search || ''}`;
-  if (targetPath.startsWith('/api/v2/')) {
-    targetPath = targetPath.replace('/api/v2', '');
-  }
+  let path = target.pathname;
+  path = path.replace(/^\/api\/v2/, '');
 
-  const routePrefix = targetPath.startsWith('/pix/') ? '/pix' : '/cashout';
-  const routedProxyUrl = `${proxyUrl}${routePrefix}${targetPath}`;
+  const routePrefix = (target.hostname.includes('pix.infopago') && !target.hostname.includes('cashout'))
+    ? '/pix' : '/cashout';
+  const fullProxyUrl = `${proxyUrl}${routePrefix}${path}${target.search || ''}`;
 
-  console.log(`[callOnzProxy] Generic /proxy not found. Trying routed proxy: ${routedProxyUrl}`);
+  console.log(`[callOnzProxy] ${method} ${fullProxyUrl} (target: ${url})`);
 
-  const routedHeaders: Record<string, string> = { ...headers };
-  if (body !== undefined && !routedHeaders['Content-Type'] && !routedHeaders['content-type']) {
-    routedHeaders['Content-Type'] = 'application/json';
-  }
-
-  const routedResp = await fetch(routedProxyUrl, {
+  const resp = await fetch(fullProxyUrl, {
     method,
-    headers: routedHeaders,
+    headers: { ...headers },
     body: body === undefined ? undefined : (typeof body === 'string' ? body : JSON.stringify(body)),
   });
 
-  const routedParsed = await parseResponse(routedResp);
+  const ct = resp.headers.get('content-type') || '';
+  const text = await resp.text();
+  let data: any = text;
+  if (ct.includes('application/json')) {
+    try { data = JSON.parse(text); } catch { /* keep text */ }
+  }
 
-  return {
-    ok: routedResp.status >= 200 && routedResp.status < 300,
-    status: routedResp.status,
-    data: routedParsed.json ?? routedParsed.text,
-  };
+  return { ok: resp.status >= 200 && resp.status < 300, status: resp.status, data };
 }
 
 Deno.serve(async (req) => {

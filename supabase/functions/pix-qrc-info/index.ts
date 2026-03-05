@@ -6,18 +6,19 @@ const corsHeaders = {
 };
 
 async function callOnzProxy(url: string, method: string, headers: Record<string, string>, body?: any) {
-  const proxyUrl = Deno.env.get('ONZ_PROXY_URL');
-  const proxyApiKey = Deno.env.get('ONZ_PROXY_API_KEY');
-  if (!proxyUrl || !proxyApiKey) throw new Error('ONZ proxy not configured');
-  const proxyPayload: any = { url, method, headers };
-  if (body !== undefined) proxyPayload.body = body;
-  const resp = await fetch(`${proxyUrl}/proxy`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-proxy-api-key': proxyApiKey },
-    body: JSON.stringify(proxyPayload),
-  });
-  const result = await resp.json();
-  return { ok: result.status >= 200 && result.status < 300, status: result.status, data: result.data };
+  const proxyUrl = (Deno.env.get('ONZ_PROXY_URL') || '').replace(/\/$/, '');
+  if (!proxyUrl) throw new Error('ONZ_PROXY_URL not configured');
+  const target = new URL(url);
+  let path = target.pathname.replace(/^\/api\/v2/, '');
+  const routePrefix = (target.hostname.includes('pix.infopago') && !target.hostname.includes('cashout')) ? '/pix' : '/cashout';
+  const fullProxyUrl = `${proxyUrl}${routePrefix}${path}${target.search || ''}`;
+  console.log(`[callOnzProxy] ${method} ${fullProxyUrl} (target: ${url})`);
+  const resp = await fetch(fullProxyUrl, { method, headers: { ...headers }, body: body === undefined ? undefined : (typeof body === 'string' ? body : JSON.stringify(body)) });
+  const ct = resp.headers.get('content-type') || '';
+  const text = await resp.text();
+  let data: any = text;
+  if (ct.includes('application/json')) { try { data = JSON.parse(text); } catch { /* keep text */ } }
+  return { ok: resp.status >= 200 && resp.status < 300, status: resp.status, data };
 }
 
 // Parse EMV QR Code TLV format (local fallback)

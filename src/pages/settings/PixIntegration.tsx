@@ -66,8 +66,8 @@ const PROVIDER_CONFIG: Record<string, {
     credentialsTitle: 'Credenciais ONZ Infopago',
     credentialsDescription: 'Credenciais OAuth2 (Client Credentials) via proxy mTLS',
     urls: {
-      production: 'https://secureapi.bancodigital.onz.software/api/v2',
-      sandbox: 'https://secureapi.bancodigital.hmg.onz.software/api/v2',
+      production: 'https://cashout.infopago.com.br/api/v2',
+      sandbox: 'https://cashout.infopago.com.br/api/v2',
     },
   },
 };
