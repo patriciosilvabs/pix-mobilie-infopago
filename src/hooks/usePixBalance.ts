@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface PixBalanceState {
@@ -81,3 +81,4 @@ export function usePixBalance() {
 
   return { ...state, refetch: fetchBalance };
 }
+

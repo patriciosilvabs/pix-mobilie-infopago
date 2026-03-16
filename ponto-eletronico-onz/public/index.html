@@ -1,0 +1,399 @@
+﻿<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ponto + Folha + Pix ONZ</title>
+    <style>
+      :root {
+        --bg: #f4f6fb;
+        --card: #ffffff;
+        --ink: #0b1220;
+        --muted: #455065;
+        --brand: #0d7a5f;
+        --brand-soft: #d9f6ec;
+        --danger: #be123c;
+        --border: #d8deea;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", sans-serif;
+        background: radial-gradient(circle at 20% 0%, #eafbf5 0%, var(--bg) 45%);
+        color: var(--ink);
+      }
+
+      .wrap {
+        max-width: 1080px;
+        margin: 20px auto;
+        padding: 12px;
+      }
+
+      .header {
+        background: linear-gradient(135deg, #0d7a5f, #0b5c8a);
+        color: #fff;
+        padding: 20px;
+        border-radius: 14px;
+      }
+
+      .header h1 { margin: 0 0 8px; }
+      .header p { margin: 0; opacity: 0.95; }
+
+      .grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 12px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px;
+      }
+
+      h2 { font-size: 1.1rem; margin: 0 0 12px; }
+      .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+      input, select, button {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 0.95rem;
+      }
+
+      input, select { flex: 1 1 150px; }
+      button {
+        background: var(--brand);
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #1f3c88;
+      }
+
+      button.warn {
+        background: var(--danger);
+      }
+
+      .hint { color: var(--muted); font-size: 0.85rem; margin: 6px 0 0; }
+      .status {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 8px;
+        background: var(--brand-soft);
+        color: #064e3b;
+        font-size: 0.9rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+      }
+
+      th, td {
+        border-bottom: 1px solid var(--border);
+        padding: 8px;
+        text-align: left;
+      }
+
+      .mono { font-family: Consolas, monospace; font-size: 0.85rem; }
+
+      @media (max-width: 760px) {
+        .wrap { margin: 8px auto; }
+        .header { border-radius: 10px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="header">
+        <h1>Ponto Eletrônico + Folha + Pix ONZ</h1>
+        <p>Fluxo completo: cadastro de colaborador, marcação de ponto, fechamento mensal e pagamento via Pix.</p>
+      </div>
+
+      <div class="grid">
+        <section class="card">
+          <h2>1) Cadastrar colaborador</h2>
+          <div class="row">
+            <input id="emp-name" placeholder="Nome" />
+            <input id="emp-role" placeholder="Cargo" />
+          </div>
+          <div class="row">
+            <input id="emp-cpf" placeholder="CPF (somente números)" />
+            <input id="emp-pix" placeholder="Chave Pix" />
+            <input id="emp-salary" type="number" min="0" step="0.01" placeholder="Salário base" />
+          </div>
+          <button onclick="createEmployee()">Cadastrar</button>
+          <p class="hint">Use a chave Pix que receberá o pagamento da folha.</p>
+          <div id="employee-status" class="status" style="display: none"></div>
+        </section>
+
+        <section class="card">
+          <h2>2) Bater ponto</h2>
+          <div class="row">
+            <select id="time-employee"></select>
+          </div>
+          <div class="row">
+            <button onclick="clockIn()">Entrada</button>
+            <button class="secondary" onclick="clockOut()">Saída</button>
+          </div>
+          <div id="time-status" class="status" style="display: none"></div>
+        </section>
+
+        <section class="card">
+          <h2>3) Fechar folha mensal</h2>
+          <div class="row">
+            <input id="month" type="month" />
+            <button onclick="closePayroll()">Fechar mês</button>
+          </div>
+          <p class="hint">O fechamento calcula horas, horas extras e salário líquido.</p>
+          <div id="payroll-status" class="status" style="display: none"></div>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top: 12px">
+        <h2>Funcionários</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Cargo</th>
+              <th>CPF</th>
+              <th>Chave Pix</th>
+              <th>Salário Base</th>
+            </tr>
+          </thead>
+          <tbody id="employees-tbody"></tbody>
+        </table>
+      </section>
+
+      <section class="card" style="margin-top: 12px">
+        <h2>Folha do mês</h2>
+        <div class="row">
+          <button class="secondary" onclick="loadPayroll()">Atualizar folha</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th>
+              <th>Horas</th>
+              <th>Horas extras</th>
+              <th>Líquido</th>
+              <th>Status</th>
+              <th>Ação</th>
+            </tr>
+          </thead>
+          <tbody id="payroll-tbody"></tbody>
+        </table>
+      </section>
+
+      <section class="card" style="margin-top: 12px">
+        <h2>Eventos Pix</h2>
+        <div class="row">
+          <button class="secondary" onclick="loadPixEvents()">Atualizar eventos</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Mês</th>
+              <th>Funcionário</th>
+              <th>Valor</th>
+              <th>Modo</th>
+            </tr>
+          </thead>
+          <tbody id="pix-tbody"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <script>
+      const api = {
+        async get(url) {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(await parseError(res));
+          return res.json();
+        },
+        async post(url, body) {
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body || {}),
+          });
+          if (!res.ok) throw new Error(await parseError(res));
+          return res.json();
+        },
+      };
+
+      async function parseError(res) {
+        const data = await res.json().catch(() => ({}));
+        return data.error || `HTTP ${res.status}`;
+      }
+
+      function setStatus(id, text, isError = false) {
+        const el = document.getElementById(id);
+        el.style.display = 'block';
+        el.textContent = text;
+        el.style.background = isError ? '#ffe4e6' : '#d9f6ec';
+        el.style.color = isError ? '#9f1239' : '#065f46';
+      }
+
+      function selectedEmployeeId() {
+        return document.getElementById('time-employee').value;
+      }
+
+      function getMonth() {
+        const month = document.getElementById('month').value;
+        if (!month) throw new Error('Selecione um mês primeiro.');
+        return month;
+      }
+
+      function money(value) {
+        return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      }
+
+      async function createEmployee() {
+        try {
+          const payload = {
+            name: document.getElementById('emp-name').value.trim(),
+            role: document.getElementById('emp-role').value.trim() || 'Colaborador',
+            cpf: document.getElementById('emp-cpf').value.trim(),
+            pixKey: document.getElementById('emp-pix').value.trim(),
+            baseSalary: Number(document.getElementById('emp-salary').value || 0),
+          };
+          const employee = await api.post('/api/employees', payload);
+          setStatus('employee-status', `Funcionário ${employee.name} cadastrado.`);
+          await loadEmployees();
+        } catch (error) {
+          setStatus('employee-status', error.message, true);
+        }
+      }
+
+      async function clockIn() {
+        try {
+          const employeeId = selectedEmployeeId();
+          await api.post('/api/time-entries/clock-in', { employeeId });
+          setStatus('time-status', 'Ponto de entrada registrado.');
+        } catch (error) {
+          setStatus('time-status', error.message, true);
+        }
+      }
+
+      async function clockOut() {
+        try {
+          const employeeId = selectedEmployeeId();
+          await api.post('/api/time-entries/clock-out', { employeeId });
+          setStatus('time-status', 'Ponto de saída registrado.');
+        } catch (error) {
+          setStatus('time-status', error.message, true);
+        }
+      }
+
+      async function closePayroll() {
+        try {
+          const month = getMonth();
+          const data = await api.post('/api/payroll/close-month', { month });
+          setStatus('payroll-status', `Folha fechada para ${month}. Registros: ${data.length}`);
+          await loadPayroll();
+        } catch (error) {
+          setStatus('payroll-status', error.message, true);
+        }
+      }
+
+      async function payPayroll(payrollId) {
+        try {
+          await api.post(`/api/payroll/${payrollId}/pay-via-pix`, { description: 'Folha salarial' });
+          await loadPayroll();
+          await loadPixEvents();
+        } catch (error) {
+          alert(error.message);
+        }
+      }
+
+      async function loadEmployees() {
+        const data = await api.get('/api/employees');
+        const tbody = document.getElementById('employees-tbody');
+        const select = document.getElementById('time-employee');
+
+        tbody.innerHTML = '';
+        select.innerHTML = '';
+
+        for (const item of data) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.name}</td>
+            <td>${item.role}</td>
+            <td class="mono">${item.cpf}</td>
+            <td class="mono">${item.pixKey}</td>
+            <td>${money(item.baseSalary)}</td>
+          `;
+          tbody.appendChild(tr);
+
+          const option = document.createElement('option');
+          option.value = item.id;
+          option.textContent = `${item.name} (${item.role})`;
+          select.appendChild(option);
+        }
+      }
+
+      async function loadPayroll() {
+        const month = document.getElementById('month').value;
+        const url = month ? `/api/payroll?month=${month}` : '/api/payroll';
+        const data = await api.get(url);
+        const tbody = document.getElementById('payroll-tbody');
+        tbody.innerHTML = '';
+
+        for (const item of data) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.employeeName}</td>
+            <td>${item.totalHours}</td>
+            <td>${item.overtimeHours}</td>
+            <td>${money(item.netSalary)}</td>
+            <td>${item.status}</td>
+            <td>${item.status === 'PAID' ? 'Pago' : `<button class="warn" onclick="payPayroll('${item.id}')">Pagar via Pix</button>`}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      async function loadPixEvents() {
+        const employees = await api.get('/api/employees');
+        const byId = Object.fromEntries(employees.map((item) => [item.id, item.name]));
+
+        const data = await api.get('/api/pix/events');
+        const tbody = document.getElementById('pix-tbody');
+        tbody.innerHTML = '';
+
+        for (const item of [...data].reverse()) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${new Date(item.createdAt).toLocaleString('pt-BR')}</td>
+            <td>${item.month}</td>
+            <td>${byId[item.employeeId] || item.employeeId}</td>
+            <td>${money(item.amount)}</td>
+            <td>${item.mode}</td>
+          `;
+          tbody.appendChild(tr);
+        }
+      }
+
+      async function boot() {
+        const now = new Date();
+        const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        document.getElementById('month').value = month;
+
+        await loadEmployees();
+        await loadPayroll();
+        await loadPixEvents();
+      }
+
+      boot().catch((error) => alert(error.message));
+    </script>
+  </body>
+</html>

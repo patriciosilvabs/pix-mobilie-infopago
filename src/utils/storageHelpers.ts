@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 
 /**
  * Extract the relative storage path from a file_url.
@@ -37,3 +37,4 @@ export async function batchSignedUrls(fileUrls: string[]): Promise<Record<string
   );
   return Object.fromEntries(entries);
 }
+

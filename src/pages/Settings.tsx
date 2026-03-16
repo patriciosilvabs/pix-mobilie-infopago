@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { Loader2, User, Shield, Link2, ChevronRight, Save } from "lucide-react";
 
 export default function Settings() {
@@ -170,3 +170,4 @@ export default function Settings() {
     </MainLayout>
   );
 }
+

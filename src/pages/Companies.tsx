@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { Loader2, Plus, Pencil, Power, Building2, Mail, Phone, MapPin } from "lucide-react";
 
 interface CompanyForm {
@@ -198,3 +198,4 @@ export default function Companies() {
     </MainLayout>
   );
 }
+

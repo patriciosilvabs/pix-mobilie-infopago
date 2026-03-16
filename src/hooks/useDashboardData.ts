@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { useAuth } from "@/contexts/AuthContext";
 import { startOfMonth, startOfDay, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -229,3 +229,4 @@ export function useDashboardData() {
 
   return { summary, categoryData, recentTransactions, missingReceipts, isLoading };
 }
+

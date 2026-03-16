@@ -1,13 +1,11 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Key, Clock, Loader2 } from "lucide-react";
-import type { Database } from "@/integrations/supabase/types";
+import type { PixKeyType, PixType } from "@/types/database";
 
-type PixKeyType = Database["public"]["Enums"]["pix_key_type"];
-type PixType = Database["public"]["Enums"]["pix_type"];
 
 export interface RecentPayment {
   pix_key: string;
@@ -158,3 +156,5 @@ export function RecentPayments({ onSelect }: RecentPaymentsProps) {
     </Card>
   );
 }
+
+

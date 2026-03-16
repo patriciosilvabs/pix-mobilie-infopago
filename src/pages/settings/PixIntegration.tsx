@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { 
   ArrowLeft, 
   Save, 
@@ -568,8 +568,13 @@ export default function PixIntegration() {
     }
   };
 
-  const webhookUrl = currentCompany 
-    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pix-webhook`
+  const functionsBaseUrl = (
+    import.meta.env.VITE_FIREBASE_FUNCTIONS_BASE_URL ||
+    `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net`
+  ).replace(/\/$/, "");
+
+  const webhookUrl = currentCompany
+    ? `${functionsBaseUrl}/pixWebhook`
     : "";
 
   if (isLoading) {
@@ -663,3 +668,7 @@ export default function PixIntegration() {
     </MainLayout>
   );
 }
+
+
+
+

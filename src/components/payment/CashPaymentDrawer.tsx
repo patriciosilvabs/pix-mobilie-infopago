@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Banknote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { invalidateDashboardCache } from "@/hooks/useDashboardData";
 
 interface CashPaymentDrawerProps {
@@ -135,3 +135,4 @@ export function CashPaymentDrawer({ open, onOpenChange }: CashPaymentDrawerProps
     </Drawer>
   );
 }
+

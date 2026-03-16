@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ImageOff, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { batchSignedUrls, extractStoragePath } from "@/utils/storageHelpers";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { toast } from "sonner";
 
 interface Transaction {
@@ -312,3 +312,4 @@ export function DailyTransactionSummary({ transactions, profileMap = {}, isAdmin
     </Card>
   );
 }
+

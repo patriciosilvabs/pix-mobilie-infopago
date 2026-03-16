@@ -1,0 +1,120 @@
+2026/03/13-12:56:53.993 1ab8 Reusing MANIFEST C:\Users\julie\AppData\Local\Google\Chrome\User Data\Default\Local Storage\leveldb/MANIFEST-046994
+2026/03/13-12:56:54.001 1ab8 Recovering log #65561
+2026/03/13-12:56:54.005 1ab8 Reusing old log C:\Users\julie\AppData\Local\Google\Chrome\User Data\Default\Local Storage\leveldb/065561.log 
+2026/03/13-15:14:18.091 2cd4 Level-0 table #65565: started
+2026/03/13-15:14:18.113 2cd4 Level-0 table #65565: 19405 bytes OK
+2026/03/13-15:14:18.115 2cd4 Delete type=0 #65561
+2026/03/13-15:14:18.115 2cd4 Compacting 4@0 + 3@1 files
+2026/03/13-15:14:18.156 2cd4 Generated table #65566@0: 3327 keys, 2131764 bytes
+2026/03/13-15:14:18.188 2cd4 Generated table #65567@0: 1259 keys, 2107817 bytes
+2026/03/13-15:14:18.221 2cd4 Generated table #65568@0: 2551 keys, 2102993 bytes
+2026/03/13-15:14:18.226 2cd4 Generated table #65569@0: 52 keys, 21833 bytes
+2026/03/13-15:14:18.226 2cd4 Compacted 4@0 + 3@1 files => 6364407 bytes
+2026/03/13-15:14:18.227 2cd4 compacted to: files[ 0 5 0 0 0 0 0 ]
+2026/03/13-15:14:18.228 2cd4 Delete type=2 #65554
+2026/03/13-15:14:18.228 2cd4 Delete type=2 #65555
+2026/03/13-15:14:18.228 2cd4 Delete type=2 #65556
+2026/03/13-15:14:18.228 2cd4 Delete type=2 #65558
+2026/03/13-15:14:18.228 2cd4 Delete type=2 #65560
+2026/03/13-15:14:18.228 2cd4 Delete type=2 #65562
+2026/03/13-15:14:18.228 2cd4 Delete type=2 #65565
+2026/03/13-15:14:22.125 2cd4 Level-0 table #65571: started
+2026/03/13-15:14:22.138 2cd4 Level-0 table #65571: 23669 bytes OK
+2026/03/13-15:14:22.140 2cd4 Delete type=0 #65564
+2026/03/13-15:15:12.289 2fe0 Level-0 table #65573: started
+2026/03/13-15:15:12.306 2fe0 Level-0 table #65573: 23354 bytes OK
+2026/03/13-15:15:12.307 2fe0 Delete type=0 #65570
+2026/03/13-15:26:59.387 2cd4 Level-0 table #65575: started
+2026/03/13-15:26:59.407 2cd4 Level-0 table #65575: 24487 bytes OK
+2026/03/13-15:26:59.409 2cd4 Delete type=0 #65572
+2026/03/13-15:27:47.057 2cd4 Level-0 table #65577: started
+2026/03/13-15:27:47.077 2cd4 Level-0 table #65577: 72431 bytes OK
+2026/03/13-15:27:47.079 2cd4 Delete type=0 #65574
+2026/03/13-15:27:47.079 2cd4 Compacting 4@0 + 3@1 files
+2026/03/13-15:27:47.122 2cd4 Generated table #65578@0: 3329 keys, 2135859 bytes
+2026/03/13-15:27:47.155 2cd4 Generated table #65579@0: 1259 keys, 2107817 bytes
+2026/03/13-15:27:47.189 2cd4 Generated table #65580@0: 2551 keys, 2102950 bytes
+2026/03/13-15:27:47.189 2cd4 Compacted 4@0 + 3@1 files => 6346626 bytes
+2026/03/13-15:27:47.190 2cd4 compacted to: files[ 0 5 0 0 0 0 0 ]
+2026/03/13-15:27:47.191 2cd4 Delete type=2 #65566
+2026/03/13-15:27:47.191 2cd4 Delete type=2 #65567
+2026/03/13-15:27:47.191 2cd4 Delete type=2 #65568
+2026/03/13-15:27:47.191 2cd4 Delete type=2 #65571
+2026/03/13-15:27:47.191 2cd4 Delete type=2 #65573
+2026/03/13-15:27:47.191 2cd4 Delete type=2 #65575
+2026/03/13-15:27:47.191 2cd4 Delete type=2 #65577
+2026/03/13-15:29:59.378 2cd4 Level-0 table #65582: started
+2026/03/13-15:29:59.398 2cd4 Level-0 table #65582: 67937 bytes OK
+2026/03/13-15:29:59.399 2cd4 Delete type=0 #65576
+2026/03/13-15:33:31.199 2cd4 Level-0 table #65584: started
+2026/03/13-15:33:31.220 2cd4 Level-0 table #65584: 73850 bytes OK
+2026/03/13-15:33:31.222 2cd4 Delete type=0 #65581
+2026/03/13-15:33:59.378 2cd4 Level-0 table #65586: started
+2026/03/13-15:33:59.398 2cd4 Level-0 table #65586: 63505 bytes OK
+2026/03/13-15:33:59.401 2cd4 Delete type=0 #65583
+2026/03/13-15:34:31.205 2cd4 Level-0 table #65588: started
+2026/03/13-15:34:31.229 2cd4 Level-0 table #65588: 62310 bytes OK
+2026/03/13-15:34:31.231 2cd4 Delete type=0 #65585
+2026/03/13-15:34:31.232 2cd4 Compacting 4@0 + 3@1 files
+2026/03/13-15:34:31.262 2cd4 Generated table #65589@0: 3329 keys, 2135402 bytes
+2026/03/13-15:34:31.284 2cd4 Generated table #65590@0: 1259 keys, 2107817 bytes
+2026/03/13-15:34:31.311 2cd4 Generated table #65591@0: 2551 keys, 2102961 bytes
+2026/03/13-15:34:31.312 2cd4 Compacted 4@0 + 3@1 files => 6346180 bytes
+2026/03/13-15:34:31.313 2cd4 compacted to: files[ 0 5 0 0 0 0 0 ]
+2026/03/13-15:34:31.314 2cd4 Delete type=2 #65578
+2026/03/13-15:34:31.314 2cd4 Delete type=2 #65579
+2026/03/13-15:34:31.314 2cd4 Delete type=2 #65580
+2026/03/13-15:34:31.314 2cd4 Delete type=2 #65582
+2026/03/13-15:34:31.314 2cd4 Delete type=2 #65584
+2026/03/13-15:34:31.314 2cd4 Delete type=2 #65586
+2026/03/13-15:34:31.314 2cd4 Delete type=2 #65588
+2026/03/13-15:49:35.779 2cd4 Level-0 table #65593: started
+2026/03/13-15:49:35.788 2cd4 Level-0 table #65593: 591948 bytes OK
+2026/03/13-15:49:35.789 2cd4 Delete type=0 #65587
+2026/03/13-15:52:41.298 2cd4 Level-0 table #65595: started
+2026/03/13-15:52:41.318 2cd4 Level-0 table #65595: 98908 bytes OK
+2026/03/13-15:52:41.320 2cd4 Delete type=0 #65592
+2026/03/13-15:58:23.306 6e0 Level-0 table #65597: started
+2026/03/13-15:58:23.324 6e0 Level-0 table #65597: 113743 bytes OK
+2026/03/13-15:58:23.326 6e0 Delete type=0 #65594
+2026/03/13-15:59:23.310 2fe0 Level-0 table #65599: started
+2026/03/13-15:59:23.335 2fe0 Level-0 table #65599: 86685 bytes OK
+2026/03/13-15:59:23.337 2fe0 Delete type=0 #65596
+2026/03/13-15:59:23.338 2fe0 Compacting 4@0 + 3@1 files
+2026/03/13-15:59:23.380 2fe0 Generated table #65600@0: 3329 keys, 2135416 bytes
+2026/03/13-15:59:23.413 2fe0 Generated table #65601@0: 1259 keys, 2105440 bytes
+2026/03/13-15:59:23.445 2fe0 Generated table #65602@0: 2551 keys, 2102944 bytes
+2026/03/13-15:59:23.445 2fe0 Compacted 4@0 + 3@1 files => 6343800 bytes
+2026/03/13-15:59:23.446 2fe0 compacted to: files[ 0 5 0 0 0 0 0 ]
+2026/03/13-15:59:23.446 2fe0 Delete type=2 #65589
+2026/03/13-15:59:23.447 2fe0 Delete type=2 #65590
+2026/03/13-15:59:23.447 2fe0 Delete type=2 #65591
+2026/03/13-15:59:23.447 2fe0 Delete type=2 #65593
+2026/03/13-15:59:23.447 2fe0 Delete type=2 #65595
+2026/03/13-15:59:23.447 2fe0 Delete type=2 #65597
+2026/03/13-15:59:23.447 2fe0 Delete type=2 #65599
+2026/03/13-16:02:41.589 2cd4 Level-0 table #65604: started
+2026/03/13-16:02:41.613 2cd4 Level-0 table #65604: 39518 bytes OK
+2026/03/13-16:02:41.615 2cd4 Delete type=0 #65598
+2026/03/13-16:14:02.574 2cd4 Level-0 table #65606: started
+2026/03/13-16:14:02.595 2cd4 Level-0 table #65606: 23697 bytes OK
+2026/03/13-16:14:02.597 2cd4 Delete type=0 #65603
+2026/03/13-16:15:04.592 2cd4 Level-0 table #65608: started
+2026/03/13-16:15:04.612 2cd4 Level-0 table #65608: 70909 bytes OK
+2026/03/13-16:15:04.614 2cd4 Delete type=0 #65605
+2026/03/13-16:49:14.317 2cd4 Level-0 table #65610: started
+2026/03/13-16:49:14.340 2cd4 Level-0 table #65610: 16352 bytes OK
+2026/03/13-16:49:14.342 2cd4 Delete type=0 #65607
+2026/03/13-16:49:14.343 2cd4 Compacting 4@0 + 3@1 files
+2026/03/13-16:49:14.371 2cd4 Generated table #65611@0: 3329 keys, 2135664 bytes
+2026/03/13-16:49:14.393 2cd4 Generated table #65612@0: 1259 keys, 2106786 bytes
+2026/03/13-16:49:14.420 2cd4 Generated table #65613@0: 2555 keys, 2103193 bytes
+2026/03/13-16:49:14.420 2cd4 Compacted 4@0 + 3@1 files => 6345643 bytes
+2026/03/13-16:49:14.421 2cd4 compacted to: files[ 0 5 0 0 0 0 0 ]
+2026/03/13-16:49:14.422 2cd4 Delete type=2 #65600
+2026/03/13-16:49:14.422 2cd4 Delete type=2 #65601
+2026/03/13-16:49:14.422 2cd4 Delete type=2 #65602
+2026/03/13-16:49:14.422 2cd4 Delete type=2 #65604
+2026/03/13-16:49:14.422 2cd4 Delete type=2 #65606
+2026/03/13-16:49:14.422 2cd4 Delete type=2 #65608
+2026/03/13-16:49:14.422 2cd4 Delete type=2 #65610

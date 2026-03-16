@@ -1,0 +1,21 @@
+2026/03/02-08:50:53.876 1c60 Reusing MANIFEST C:\Users\julie\AppData\Local\Google\Chrome\User Data\Profile 1\Local Storage\leveldb/MANIFEST-000001
+2026/03/02-08:50:53.877 1c60 Recovering log #104
+2026/03/02-08:50:53.881 1c60 Reusing old log C:\Users\julie\AppData\Local\Google\Chrome\User Data\Profile 1\Local Storage\leveldb/000104.log 
+2026/03/02-10:56:39.164 2680 Level-0 table #108: started
+2026/03/02-10:56:39.184 2680 Level-0 table #108: 11091 bytes OK
+2026/03/02-10:56:39.186 2680 Delete type=0 #104
+2026/03/02-10:56:39.187 2680 Compacting 4@0 + 1@1 files
+2026/03/02-10:56:39.209 2680 Generated table #109@0: 1056 keys, 1164100 bytes
+2026/03/02-10:56:39.209 2680 Compacted 4@0 + 1@1 files => 1164100 bytes
+2026/03/02-10:56:39.209 2680 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/03/02-10:56:39.210 2680 Delete type=2 #97
+2026/03/02-10:56:39.211 2680 Delete type=2 #100
+2026/03/02-10:56:39.211 2680 Delete type=2 #102
+2026/03/02-10:56:39.211 2680 Delete type=2 #105
+2026/03/02-10:56:39.211 2680 Delete type=2 #108
+2026/03/02-16:31:39.172 2680 Level-0 table #111: started
+2026/03/02-16:31:39.195 2680 Level-0 table #111: 10280 bytes OK
+2026/03/02-16:31:39.197 2680 Delete type=0 #107
+2026/03/02-21:56:39.169 2680 Level-0 table #113: started
+2026/03/02-21:56:39.192 2680 Level-0 table #113: 10339 bytes OK
+2026/03/02-21:56:39.194 2680 Delete type=0 #110

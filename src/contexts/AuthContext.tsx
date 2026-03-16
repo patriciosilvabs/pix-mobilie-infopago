@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { User, Session } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+﻿import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import type { AuthSession as Session, AuthUser as User } from "@/integrations/firebase/backend";
+import { supabase } from "@/integrations/firebase/backend";
 import { AppRole, Profile, Company, CompanyMember } from "@/types/database";
 
 interface AuthContextType {
@@ -27,6 +27,8 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const OWNER_EMAIL = "patriciobarbosadasilva@gmail.com";
+const OWNER_UID = "vgvQbMGYApNMd0bgCBBE7BACkL63";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -41,9 +43,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  const isAdmin = role === "admin";
+  const isOwner =
+    (user?.email || "").toLowerCase() === OWNER_EMAIL ||
+    user?.id === OWNER_UID;
+  const isAdmin = role === "admin" || isOwner;
   const isOperator = role === "operator";
-  const canViewBalance = companyMembership?.can_view_balance ?? isAdmin;
+  const canViewBalance = isOwner ? true : (companyMembership?.can_view_balance ?? isAdmin);
 
   // isLoading must remain true until permissions are fully loaded for authenticated users
   const effectiveIsLoading = isLoading || (!!user && !permissionsLoaded);
@@ -244,16 +249,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const hasPageAccess = useCallback((pageKey: string): boolean => {
     if (!permissionsLoaded) return false;
+    if (isOwner) return true;
     if (isAdmin) return true;
     return pagePermissions.includes(pageKey);
-  }, [isAdmin, pagePermissions, permissionsLoaded]);
+  }, [isAdmin, isOwner, pagePermissions, permissionsLoaded]);
 
   const hasFeatureAccess = useCallback((featureKey: string): boolean => {
     if (!permissionsLoaded) return false;
+    if (isOwner) return true;
     if (isAdmin) return true;
     if (featurePermissions.length === 0) return true;
     return featurePermissions.includes(featureKey);
-  }, [isAdmin, featurePermissions, permissionsLoaded]);
+  }, [isAdmin, isOwner, featurePermissions, permissionsLoaded]);
 
   return (
     <AuthContext.Provider
@@ -292,3 +299,11 @@ export function useAuth() {
   }
   return context;
 }
+
+
+
+
+
+
+
+

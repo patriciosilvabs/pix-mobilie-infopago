@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { cn } from "@/lib/utils";
 import { invalidateDashboardCache } from "@/hooks/useDashboardData";
 import {
@@ -630,3 +630,4 @@ export default function ReceiptCapture() {
     </MainLayout>
   );
 }
+

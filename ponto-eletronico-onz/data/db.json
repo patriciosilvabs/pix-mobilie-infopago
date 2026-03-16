@@ -1,0 +1,75 @@
+{
+  "employees": [
+    {
+      "id": "emp_8d801249594a8771",
+      "name": "Maria Silva",
+      "role": "Analista",
+      "cpf": "12345678901",
+      "pixKey": "maria@empresa.com",
+      "baseSalary": 3500,
+      "createdAt": "2026-03-09T03:23:04.842Z"
+    }
+  ],
+  "timeEntries": [
+    {
+      "id": "time_4707b3f72a59c609",
+      "employeeId": "emp_8d801249594a8771",
+      "clockInAt": "2026-03-01T08:00:00.000Z",
+      "clockOutAt": "2026-03-01T18:30:00.000Z"
+    }
+  ],
+  "payrolls": [
+    {
+      "id": "pay_0449ffb1043fc2fe",
+      "employeeId": "emp_8d801249594a8771",
+      "employeeName": "Maria Silva",
+      "cpf": "12345678901",
+      "pixKey": "maria@empresa.com",
+      "month": "2026-03",
+      "status": "PAID",
+      "totalHours": 10.5,
+      "overtimeHours": 0,
+      "overtimeAmount": 0,
+      "grossSalary": 3500,
+      "inss": 280,
+      "netSalary": 3220,
+      "paidAt": "2026-03-09T03:23:04.896Z",
+      "pixPayment": {
+        "mode": "mock",
+        "status": "QUEUED",
+        "id": 723637,
+        "endToEndId": "E2E1773026584896",
+        "eventDate": "2026-03-09T03:23:04.896Z",
+        "payment": {
+          "currency": "BRL",
+          "amount": 3220
+        },
+        "type": "DICT"
+      },
+      "updatedAt": "2026-03-09T03:23:04.888Z"
+    }
+  ],
+  "pixEvents": [
+    {
+      "id": "pixevt_b93ea17d96801974",
+      "payrollId": "pay_0449ffb1043fc2fe",
+      "employeeId": "emp_8d801249594a8771",
+      "month": "2026-03",
+      "amount": 3220,
+      "mode": "mock",
+      "createdAt": "2026-03-09T03:23:04.896Z",
+      "payload": {
+        "mode": "mock",
+        "status": "QUEUED",
+        "id": 723637,
+        "endToEndId": "E2E1773026584896",
+        "eventDate": "2026-03-09T03:23:04.896Z",
+        "payment": {
+          "currency": "BRL",
+          "amount": 3220
+        },
+        "type": "DICT"
+      }
+    }
+  ]
+}

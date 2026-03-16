@@ -12,7 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePixPayment } from "@/hooks/usePixPayment";
 import { useBilletPayment } from "@/hooks/useBilletPayment";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/firebase/backend";
 import { invalidateDashboardCache } from "@/hooks/useDashboardData";
 import { cn, formatCurrency } from "@/lib/utils";
 import {
@@ -840,3 +840,4 @@ export default function NewPayment() {
     </MainLayout>
   );
 }
+

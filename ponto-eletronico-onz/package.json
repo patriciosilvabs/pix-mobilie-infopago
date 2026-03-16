@@ -1,0 +1,13 @@
+﻿{
+  "name": "ponto-eletronico-onz",
+  "version": "1.0.0",
+  "description": "Aplicação de ponto eletrônico com folha de pagamento e Pix ONZ InfoPago",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
