@@ -67,9 +67,10 @@ Deno.serve(async (req) => {
       const authBody: any = { company_id, purpose: 'cash_out' };
       if (forceNewToken) authBody.force_new = true;
 
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
       const authResponse = await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/pix-auth`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': authHeader },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${serviceRoleKey}`, 'apikey': serviceRoleKey },
         body: JSON.stringify(authBody),
       });
 
