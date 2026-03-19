@@ -1,4 +1,5 @@
-﻿import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+// @refresh reset
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import type { AuthSession as Session, AuthUser as User } from "@/integrations/firebase/backend";
 import { supabase } from "@/integrations/firebase/backend";
 import { AppRole, Profile, Company, CompanyMember } from "@/types/database";
