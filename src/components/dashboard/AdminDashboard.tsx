@@ -392,11 +392,13 @@ export function AdminDashboard() {
         onClose={() => setBarcodeScannerOpen(false)}
         preAcquiredStream={preAcquiredStreamRef.current}
       />
-      <BoletoPaymentDrawer
-        open={boletoPaymentOpen}
-        barcode={scannedBarcode}
-        onOpenChange={setBoletoPaymentOpen}
-      />
+      {boletoPaymentOpen && (
+        <BoletoPaymentDrawer
+          open={boletoPaymentOpen}
+          barcode={scannedBarcode}
+          onOpenChange={setBoletoPaymentOpen}
+        />
+      )}
     </>
   );
 }
