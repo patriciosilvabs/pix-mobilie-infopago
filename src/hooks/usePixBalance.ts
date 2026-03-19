@@ -23,11 +23,6 @@ export function usePixBalance() {
   });
 
   const fetchBalance = useCallback(async () => {
-    if (!currentCompany?.id) {
-      setState(prev => ({ ...prev, isLoading: false }));
-      return;
-    }
-
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -35,8 +30,10 @@ export function usePixBalance() {
         return;
       }
 
+      const fallbackCompanyId = localStorage.getItem('currentCompanyId');
+      const companyId = currentCompany?.id ?? fallbackCompanyId;
       const response = await supabase.functions.invoke('pix-balance', {
-        body: { company_id: currentCompany.id },
+        body: companyId ? { company_id: companyId } : {},
       });
 
       if (response.error) {

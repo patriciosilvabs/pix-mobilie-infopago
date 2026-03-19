@@ -37,24 +37,46 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { company_id } = await req.json();
-    if (!company_id) {
-      return new Response(JSON.stringify({ error: 'company_id is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const requestBody = await req.json().catch(() => ({}));
+    let resolvedCompanyId = requestBody?.company_id as string | undefined;
+
+    if (!resolvedCompanyId) {
+      const { data: activeConfigs, error: activeConfigsError } = await supabase
+        .from('pix_configs')
+        .select('company_id')
+        .eq('is_active', true)
+        .limit(2);
+
+      if (activeConfigsError) {
+        return new Response(JSON.stringify({ error: 'Falha ao localizar empresa ativa', details: activeConfigsError.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const availableCompanyIds = Array.from(new Set((activeConfigs ?? []).map((item: any) => item.company_id).filter(Boolean)));
+
+      if (availableCompanyIds.length === 1) {
+        resolvedCompanyId = availableCompanyIds[0];
+      } else if (availableCompanyIds.length === 0) {
+        return new Response(JSON.stringify({ success: true, balance: null, available: false, provider: null, message: 'Nenhuma configuração Pix ativa encontrada' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      } else {
+        return new Response(JSON.stringify({ error: 'company_id is required when multiple companies are configured' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
     }
 
-    console.log(`[pix-balance] Fetching ONZ balance for company: ${company_id}`);
+    console.log(`[pix-balance] Fetching ONZ balance for company: ${resolvedCompanyId}`);
 
     // Get Pix config
     let config: any = null;
     const { data: cashOutConfig } = await supabase
       .from('pix_configs').select('*')
-      .eq('company_id', company_id).eq('is_active', true).eq('purpose', 'cash_out').single();
+      .eq('company_id', resolvedCompanyId).eq('is_active', true).eq('purpose', 'cash_out').single();
     config = cashOutConfig;
     if (!config) {
       const { data: bothConfig } = await supabase
         .from('pix_configs').select('*')
-        .eq('company_id', company_id).eq('is_active', true).eq('purpose', 'both').single();
+        .eq('company_id', resolvedCompanyId).eq('is_active', true).eq('purpose', 'both').single();
       config = bothConfig;
     }
 
@@ -64,7 +86,7 @@ Deno.serve(async (req) => {
     }
 
     const fetchBalance = async (forceNewToken = false): Promise<Response> => {
-      const authBody: any = { company_id, purpose: 'cash_out' };
+      const authBody: any = { company_id: resolvedCompanyId, purpose: 'cash_out' };
       if (forceNewToken) authBody.force_new = true;
 
       const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
