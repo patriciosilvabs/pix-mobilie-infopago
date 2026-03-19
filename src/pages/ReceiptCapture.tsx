@@ -64,7 +64,7 @@ export default function ReceiptCapture() {
   useEffect(() => {
     if (!currentCompany) return;
 
-    // Load categories and usage counts in parallel
+    // Load categories, usage counts, and description suggestions in parallel
     Promise.all([
       supabase
         .from("categories")
@@ -77,7 +77,12 @@ export default function ReceiptCapture() {
         .select("category_id")
         .eq("company_id", currentCompany.id)
         .not("category_id", "is", null),
-    ]).then(([catRes, txRes]) => {
+      supabase
+        .from("transactions")
+        .select("description")
+        .eq("company_id", currentCompany.id)
+        .not("description", "is", null),
+    ]).then(([catRes, txRes, descRes]) => {
       if (catRes.data) setCategories(catRes.data as CategoryRecord[]);
       if (txRes.data) {
         const counts: Record<string, number> = {};
@@ -86,6 +91,18 @@ export default function ReceiptCapture() {
           counts[cid] = (counts[cid] || 0) + 1;
         }
         setCategoryUsageCounts(counts);
+      }
+      if (descRes.data) {
+        const descCounts: Record<string, number> = {};
+        for (const row of descRes.data as { description: string }[]) {
+          const d = (row.description || "").trim();
+          if (d) descCounts[d] = (descCounts[d] || 0) + 1;
+        }
+        const sorted = Object.entries(descCounts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 50);
+        setDescriptionSuggestions(sorted);
       }
     });
   }, [currentCompany]);
