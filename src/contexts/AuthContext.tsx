@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchInProgressRef.current = true;
     setPermissionsLoaded(false);
     try {
+      console.log("[AuthContext] fetchUserData started for:", userId);
       // Fetch profile
       const { data: profileData } = await supabase
         .from("profiles")
