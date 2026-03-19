@@ -57,11 +57,14 @@ export default function ReceiptCapture() {
   const [categorySearch, setCategorySearch] = useState("");
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [categoryUsageCounts, setCategoryUsageCounts] = useState<Record<string, number>>({});
+  const [expenseName, setExpenseName] = useState("");
+  const [descriptionSuggestions, setDescriptionSuggestions] = useState<{ name: string; count: number }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     if (!currentCompany) return;
 
-    // Load categories and usage counts in parallel
+    // Load categories, usage counts, and description suggestions in parallel
     Promise.all([
       supabase
         .from("categories")
@@ -74,7 +77,12 @@ export default function ReceiptCapture() {
         .select("category_id")
         .eq("company_id", currentCompany.id)
         .not("category_id", "is", null),
-    ]).then(([catRes, txRes]) => {
+      supabase
+        .from("transactions")
+        .select("description")
+        .eq("company_id", currentCompany.id)
+        .not("description", "is", null),
+    ]).then(([catRes, txRes, descRes]) => {
       if (catRes.data) setCategories(catRes.data as CategoryRecord[]);
       if (txRes.data) {
         const counts: Record<string, number> = {};
@@ -83,6 +91,18 @@ export default function ReceiptCapture() {
           counts[cid] = (counts[cid] || 0) + 1;
         }
         setCategoryUsageCounts(counts);
+      }
+      if (descRes.data) {
+        const descCounts: Record<string, number> = {};
+        for (const row of descRes.data as { description: string }[]) {
+          const d = (row.description || "").trim();
+          if (d) descCounts[d] = (descCounts[d] || 0) + 1;
+        }
+        const sorted = Object.entries(descCounts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 50);
+        setDescriptionSuggestions(sorted);
       }
     });
   }, [currentCompany]);
@@ -275,7 +295,11 @@ export default function ReceiptCapture() {
       // Update transaction status to completed
       await supabase
         .from("transactions")
-        .update({ status: "completed" as const, paid_at: new Date().toISOString() })
+        .update({
+          status: "completed" as const,
+          paid_at: new Date().toISOString(),
+          description: expenseName.trim() || null,
+        })
         .eq("id", transactionId);
 
       // Update category on transaction if selected
@@ -329,7 +353,7 @@ export default function ReceiptCapture() {
     });
   };
 
-  const canSubmit = receiptData.file && receiptData.classification && !receiptData.isProcessing;
+  const canSubmit = receiptData.file && receiptData.classification && expenseName.trim() && !receiptData.isProcessing;
 
   return (
     <MainLayout>
@@ -539,6 +563,53 @@ export default function ReceiptCapture() {
                       <span className="font-bold">DESPESA</span>
                     </Button>
                   </div>
+
+                  {/* Expense/Cost Name */}
+                  {receiptData.classification && (
+                    <div className="space-y-2 relative">
+                      <label className="text-sm font-medium">
+                        Nome do {receiptData.classification === "cost" ? "Custo" : "Despesa"}
+                      </label>
+                      <div className="relative">
+                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={`Ex: ${receiptData.classification === "cost" ? "Matéria-prima, Frete..." : "Aluguel, Energia..."}`}
+                          value={expenseName}
+                          onChange={(e) => {
+                            setExpenseName(e.target.value);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                          className="pl-9"
+                        />
+                      </div>
+                      {showSuggestions && expenseName.trim().length > 0 && (() => {
+                        const filtered = descriptionSuggestions
+                          .filter((s) => s.name.toLowerCase().includes(expenseName.toLowerCase().trim()))
+                          .slice(0, 5);
+                        if (filtered.length === 0) return null;
+                        return (
+                          <div className="absolute z-10 w-full bg-popover border rounded-md shadow-lg mt-1 py-1">
+                            {filtered.map((s) => (
+                              <button
+                                key={s.name}
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center justify-between"
+                                onMouseDown={() => {
+                                  setExpenseName(s.name);
+                                  setShowSuggestions(false);
+                                }}
+                              >
+                                <span>{s.name}</span>
+                                <span className="text-xs text-muted-foreground">{s.count}x</span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
 
                   {/* Subcategories */}
                   {receiptData.classification && (

@@ -80,13 +80,13 @@ export function RecentPayments({ onSelect }: RecentPaymentsProps) {
       }
 
       // Group by unique pix_key, keep most recent
-      const grouped = (txResult.data || []).reduce<Record<string, RecentPayment>>((acc, tx) => {
-        const key = tx.pix_key!;
-        if (!acc[key]) {
-          acc[key] = tx as RecentPayment;
+      const grouped: Record<string, RecentPayment> = {};
+      for (const tx of (txResult.data || []) as RecentPayment[]) {
+        const key = tx.pix_key;
+        if (key && !grouped[key]) {
+          grouped[key] = tx;
         }
-        return acc;
-      }, {});
+      }
 
       setPayments(Object.values(grouped).slice(0, 10));
       setIsLoading(false);

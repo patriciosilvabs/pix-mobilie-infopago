@@ -1,29 +1,24 @@
 
 
-## Plano: Adicionar campo "Nome da Despesa/Custo" com autocompletar baseado em histórico
+## Plano: Remover registro automático de webhook Transfeera e usar configuração manual via painel ONZ
 
-### O que será feito
+### Contexto do problema
 
-Adicionar um campo de texto entre a seleção de classificação (Custo/Despesa) e a seleção de categoria, onde o usuário digita o nome/descrição do pagamento. Conforme o usuário digita, o sistema mostra sugestões baseadas nas descrições mais usadas anteriormente (da mesma empresa), ordenadas por frequência.
+O botão "Registrar Webhook" e o registro automático após teste de conexão chamam a Edge Function `register-transfeera-webhook`, que autentica na API da **Transfeera** (um provedor diferente da ONZ). Como o sistema agora usa exclusivamente ONZ Infopago, essas credenciais Transfeera retornam 401 Unauthorized. A ONZ não tem API para registro de webhook -- é feito manualmente no painel.
 
-### Detalhes técnicos
+### Mudanças
 
-A tabela `transactions` já possui a coluna `description` (text, nullable) -- não é necessária migração.
+**1. Remover a Edge Function `register-transfeera-webhook`**
+- Deletar `supabase/functions/register-transfeera-webhook/index.ts`
 
-**Arquivo: `src/pages/ReceiptCapture.tsx`**
-
-1. Adicionar estado `expenseName` (string) e `expenseNameSuggestions` (lista de strings com contagem)
-2. No `useEffect` que carrega categorias, também carregar as descrições mais usadas:
-   - Query: `SELECT description, COUNT(*) as count FROM transactions WHERE company_id = ? AND description IS NOT NULL GROUP BY description ORDER BY count DESC LIMIT 50`
-3. Adicionar campo de input com label "Nome do Custo/Despesa" logo após os botões Custo/Despesa e antes do seletor de Categoria
-4. Ao digitar, filtrar as sugestões pelo texto digitado e exibir como lista dropdown (máximo ~5 sugestões), ordenadas por frequência
-5. Ao clicar numa sugestão, preencher o campo
-6. No `handleSubmit`, salvar o valor digitado no campo `description` da transação (junto com o update de `status` e `paid_at`)
-7. Adicionar `expenseName` na interface `ReceiptData` (ou como estado separado)
-8. Tornar o campo obrigatório para submissão (atualizar `canSubmit`)
-
-### Comportamento esperado
-- Usuário seleciona Custo ou Despesa
-- Campo "Nome" aparece -- ao digitar, sugestões dos nomes mais usados aparecem abaixo
-- Com o tempo, as sugestões ficam mais relevantes pois refletem o histórico real da empresa
+**2. Atualizar `src/pages/settings/PixIntegration.tsx`**
+- Remover a função `handleRegisterWebhook` e o estado `isRegisteringWebhook`
+- Remover a chamada automática `handleRegisterWebhook(true)` de dentro de `handleTestConnection` (linhas 300-304)
+- Remover o botão "Registrar" do card de Webhook (linha 479-482)
+- Adicionar instruções textuais orientando o usuário a configurar o webhook manualmente no painel ONZ:
+  - Evento: `Transferência` e `Fila de Saída de Pagamentos`
+  - Método: POST
+  - URL: a URL exibida no campo (copiável)
+  - Header: `x-webhook-secret: <valor configurado>`
+- Simplificar a mensagem de sucesso no teste de conexão (sem mencionar webhook)
 
