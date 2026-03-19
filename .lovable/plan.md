@@ -1,24 +1,41 @@
 
 
-## Plano: Remover registro automático de webhook Transfeera e usar configuração manual via painel ONZ
+## Problema
 
-### Contexto do problema
+Ao clicar em "Confirmar Pagamento", aparece o erro "Você precisa estar logado e ter uma empresa selecionada" porque o `resolvePaymentContext` exige que tanto a sessão quanto o `companyId` estejam disponíveis. A sessão vem do Firebase (`auth.currentUser`), que pode estar `null` em determinados momentos de timing, mesmo com o usuário autenticado.
 
-O botão "Registrar Webhook" e o registro automático após teste de conexão chamam a Edge Function `register-transfeera-webhook`, que autentica na API da **Transfeera** (um provedor diferente da ONZ). Como o sistema agora usa exclusivamente ONZ Infopago, essas credenciais Transfeera retornam 401 Unauthorized. A ONZ não tem API para registro de webhook -- é feito manualmente no painel.
+No entanto, a função `supabase.functions.invoke()` já obtém o token Firebase diretamente via `getIdToken(auth.currentUser)` no momento da chamada — tornando a verificação de sessão no `resolvePaymentContext` redundante e causa do erro.
 
-### Mudanças
+## Plano
 
-**1. Remover a Edge Function `register-transfeera-webhook`**
-- Deletar `supabase/functions/register-transfeera-webhook/index.ts`
+### 1. Simplificar `resolvePaymentContext` em `usePixPayment.ts`
 
-**2. Atualizar `src/pages/settings/PixIntegration.tsx`**
-- Remover a função `handleRegisterWebhook` e o estado `isRegisteringWebhook`
-- Remover a chamada automática `handleRegisterWebhook(true)` de dentro de `handleTestConnection` (linhas 300-304)
-- Remover o botão "Registrar" do card de Webhook (linha 479-482)
-- Adicionar instruções textuais orientando o usuário a configurar o webhook manualmente no painel ONZ:
-  - Evento: `Transferência` e `Fila de Saída de Pagamentos`
-  - Método: POST
-  - URL: a URL exibida no campo (copiável)
-  - Header: `x-webhook-secret: <valor configurado>`
-- Simplificar a mensagem de sucesso no teste de conexão (sem mencionar webhook)
+Remover a verificação de sessão. Manter apenas a verificação de `companyId` (do contexto React ou localStorage). A autenticação já é tratada automaticamente pelo `supabase.functions.invoke()` que injeta o token Bearer.
+
+```typescript
+const resolvePaymentContext = useCallback(async (showToast = true) => {
+  const companyId = currentCompany?.id ?? localStorage.getItem("currentCompanyId");
+
+  if (!companyId) {
+    if (showToast) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Nenhuma empresa selecionada.",
+      });
+    }
+    return null;
+  }
+
+  return { companyId };
+}, [currentCompany?.id, toast]);
+```
+
+### 2. Aplicar a mesma correção em `useBilletPayment.ts`
+
+Mesma simplificação — remover a verificação de sessão do `resolvePaymentContext`, manter apenas a verificação de `companyId`.
+
+### Arquivos modificados
+- `src/hooks/usePixPayment.ts` — simplificar `resolvePaymentContext`
+- `src/hooks/useBilletPayment.ts` — simplificar `resolvePaymentContext`
 
