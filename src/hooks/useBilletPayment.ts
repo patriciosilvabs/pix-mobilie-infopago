@@ -71,8 +71,30 @@ export function useBilletPayment() {
   const [consultData, setConsultData] = useState<BilletConsultResult | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
+  const resolvePaymentContext = useCallback(async (showToast = true) => {
+    const {
+      data: { session: latestSession },
+    } = await supabase.auth.getSession();
+    const activeSession = session ?? latestSession;
+    const companyId = currentCompany?.id ?? localStorage.getItem("currentCompanyId");
+
+    if (!activeSession || !companyId) {
+      if (showToast) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Você precisa estar logado e ter uma empresa selecionada.",
+        });
+      }
+      return null;
+    }
+
+    return { companyId };
+  }, [currentCompany?.id, session, toast]);
+
   const consultBillet = useCallback(async (codigo_barras: string): Promise<BilletConsultResult | null> => {
-    if (!currentCompany || !session) return null;
+    const context = await resolvePaymentContext(false);
+    if (!context) return null;
 
     setIsConsulting(true);
     setConsultData(null);
@@ -80,14 +102,13 @@ export function useBilletPayment() {
     try {
       const { data, error } = await supabase.functions.invoke('billet-consult', {
         body: {
-          company_id: currentCompany.id,
+          company_id: context.companyId,
           codigo_barras,
         },
       });
 
       if (error || !data?.success) {
         console.error('[useBilletPayment] Consult error:', error || data?.error);
-        // Non-blocking: return null, let the user proceed with manual amount
         return null;
       }
 
@@ -99,24 +120,18 @@ export function useBilletPayment() {
     } finally {
       setIsConsulting(false);
     }
-  }, [currentCompany, session]);
+  }, [resolvePaymentContext]);
 
   const payBillet = useCallback(async (params: PayBilletParams): Promise<BilletPaymentResult | null> => {
-    if (!currentCompany || !session) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado e ter uma empresa selecionada.",
-      });
-      return null;
-    }
+    const context = await resolvePaymentContext();
+    if (!context) return null;
 
     setIsProcessing(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('billet-pay', {
         body: {
-          company_id: currentCompany.id,
+          company_id: context.companyId,
           codigo_barras: params.digitable_code,
           descricao: params.description,
           valor: params.amount,
@@ -125,7 +140,6 @@ export function useBilletPayment() {
 
       if (error) {
         console.error('[useBilletPayment] Pay error:', error);
-        // Try to extract the actual error message from the response context
         let errorMessage = "Tente novamente mais tarde.";
         try {
           if (error.context && typeof error.context === 'object') {
@@ -135,7 +149,9 @@ export function useBilletPayment() {
               errorMessage = body?.error || body?.hint || errorMessage;
             }
           }
-        } catch { /* ignore parse errors */ }
+        } catch {
+          /* ignore parse errors */
+        }
         toast({
           variant: "destructive",
           title: "Pagamento de boleto indisponível",
@@ -172,18 +188,19 @@ export function useBilletPayment() {
     } finally {
       setIsProcessing(false);
     }
-  }, [currentCompany, session, toast]);
+  }, [resolvePaymentContext, toast]);
 
   const checkBilletStatus = useCallback(async (
     billetIdOrTransactionId: string,
     isTransactionId = false
   ): Promise<BilletStatus | null> => {
-    if (!currentCompany || !session) return null;
+    const context = await resolvePaymentContext(false);
+    if (!context) return null;
 
     setIsChecking(true);
 
     try {
-      const body: any = { company_id: currentCompany.id };
+      const body: any = { company_id: context.companyId };
 
       if (isTransactionId) {
         body.transaction_id = billetIdOrTransactionId;
@@ -208,7 +225,7 @@ export function useBilletPayment() {
     } finally {
       setIsChecking(false);
     }
-  }, [currentCompany, session]);
+  }, [resolvePaymentContext]);
 
   const startPolling = useCallback((billetId: string, intervalMs = 5000, maxAttempts = 60) => {
     let attempts = 0;
@@ -243,7 +260,6 @@ export function useBilletPayment() {
       if (attempts >= maxAttempts) {
         console.log('[useBilletPayment] Max polling attempts reached');
         stopPolling();
-        return;
       }
     };
 
@@ -262,17 +278,11 @@ export function useBilletPayment() {
     billetIdOrTransactionId: string,
     isTransactionId = false
   ) => {
-    if (!currentCompany || !session) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado.",
-      });
-      return;
-    }
+    const context = await resolvePaymentContext();
+    if (!context) return;
 
     try {
-      const body: any = { company_id: currentCompany.id };
+      const body: any = { company_id: context.companyId };
 
       if (isTransactionId) {
         body.transaction_id = billetIdOrTransactionId;
@@ -327,7 +337,7 @@ export function useBilletPayment() {
         description: "Falha na comunicação com o servidor.",
       });
     }
-  }, [currentCompany, session, toast]);
+  }, [resolvePaymentContext, toast]);
 
   useEffect(() => {
     return () => {
@@ -350,4 +360,3 @@ export function useBilletPayment() {
     downloadBilletReceipt,
   };
 }
-
