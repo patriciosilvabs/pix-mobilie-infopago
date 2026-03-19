@@ -72,25 +72,21 @@ export function useBilletPayment() {
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   const resolvePaymentContext = useCallback(async (showToast = true) => {
-    const {
-      data: { session: latestSession },
-    } = await supabase.auth.getSession();
-    const activeSession = session ?? latestSession;
     const companyId = currentCompany?.id ?? localStorage.getItem("currentCompanyId");
 
-    if (!activeSession || !companyId) {
+    if (!companyId) {
       if (showToast) {
         toast({
           variant: "destructive",
           title: "Erro",
-          description: "Você precisa estar logado e ter uma empresa selecionada.",
+          description: "Nenhuma empresa selecionada.",
         });
       }
       return null;
     }
 
     return { companyId };
-  }, [currentCompany?.id, session, toast]);
+  }, [currentCompany?.id, toast]);
 
   const consultBillet = useCallback(async (codigo_barras: string): Promise<BilletConsultResult | null> => {
     const context = await resolvePaymentContext(false);
