@@ -61,7 +61,7 @@ interface BilletReceiptResult {
 }
 
 export function useBilletPayment() {
-  const { currentCompany, session } = useAuth();
+  const { currentCompany } = useAuth();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isChecking, setIsChecking] = useState(false);

@@ -84,7 +84,7 @@ interface ReceiptResult {
 }
 
 export function usePixPayment() {
-  const { currentCompany, session } = useAuth();
+  const { currentCompany } = useAuth();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
