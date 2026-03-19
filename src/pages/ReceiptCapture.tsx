@@ -564,6 +564,53 @@ export default function ReceiptCapture() {
                     </Button>
                   </div>
 
+                  {/* Expense/Cost Name */}
+                  {receiptData.classification && (
+                    <div className="space-y-2 relative">
+                      <label className="text-sm font-medium">
+                        Nome do {receiptData.classification === "cost" ? "Custo" : "Despesa"}
+                      </label>
+                      <div className="relative">
+                        <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={`Ex: ${receiptData.classification === "cost" ? "Matéria-prima, Frete..." : "Aluguel, Energia..."}`}
+                          value={expenseName}
+                          onChange={(e) => {
+                            setExpenseName(e.target.value);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                          className="pl-9"
+                        />
+                      </div>
+                      {showSuggestions && expenseName.trim().length > 0 && (() => {
+                        const filtered = descriptionSuggestions
+                          .filter((s) => s.name.toLowerCase().includes(expenseName.toLowerCase().trim()))
+                          .slice(0, 5);
+                        if (filtered.length === 0) return null;
+                        return (
+                          <div className="absolute z-10 w-full bg-popover border rounded-md shadow-lg mt-1 py-1">
+                            {filtered.map((s) => (
+                              <button
+                                key={s.name}
+                                type="button"
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center justify-between"
+                                onMouseDown={() => {
+                                  setExpenseName(s.name);
+                                  setShowSuggestions(false);
+                                }}
+                              >
+                                <span>{s.name}</span>
+                                <span className="text-xs text-muted-foreground">{s.count}x</span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   {/* Subcategories */}
                   {receiptData.classification && (
                     <div className="space-y-2">
