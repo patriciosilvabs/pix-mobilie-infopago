@@ -29,7 +29,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const OWNER_EMAIL = "patriciobarbosadasilva@gmail.com";
-const OWNER_UID = "vgvQbMGYApNMd0bgCBBE7BACkL63";
+const OWNER_UID = "ZWFwFMVxq0Tk24ttmVDS8BRdUBt1";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     fetchInProgressRef.current = true;
     setPermissionsLoaded(false);
     try {
+      console.log("[AuthContext] fetchUserData started for:", userId);
       // Fetch profile
       const { data: profileData } = await supabase
         .from("profiles")
@@ -141,8 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("[AuthContext] Error fetching user data:", error);
     } finally {
+      console.log("[AuthContext] fetchUserData complete. permissionsLoaded=true");
       setPermissionsLoaded(true);
       loadedUserIdRef.current = userId;
       fetchInProgressRef.current = false;
