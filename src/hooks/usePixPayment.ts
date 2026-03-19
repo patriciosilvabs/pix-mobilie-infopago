@@ -506,20 +506,6 @@ export function usePixPayment() {
 
   // Request refund
   const requestRefund = useCallback(async (transactionId: string, valor?: number, motivo?: string) => {
-    const {
-      data: { session: latestSession },
-    } = await supabase.auth.getSession();
-    const activeSession = session ?? latestSession;
-
-    if (!activeSession) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado.",
-      });
-      return null;
-    }
-
     try {
       const { data, error } = await supabase.functions.invoke('pix-refund', {
         body: {
@@ -556,7 +542,7 @@ export function usePixPayment() {
       });
       return null;
     }
-  }, [session, toast]);
+  }, [toast]);
 
   // Cleanup on unmount
   useEffect(() => {
