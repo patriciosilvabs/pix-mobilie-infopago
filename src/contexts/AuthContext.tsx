@@ -142,8 +142,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("[AuthContext] Error fetching user data:", error);
     } finally {
+      console.log("[AuthContext] fetchUserData complete. permissionsLoaded=true");
       setPermissionsLoaded(true);
       loadedUserIdRef.current = userId;
       fetchInProgressRef.current = false;
