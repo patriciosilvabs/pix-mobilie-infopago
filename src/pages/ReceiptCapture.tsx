@@ -353,7 +353,7 @@ export default function ReceiptCapture() {
     });
   };
 
-  const canSubmit = receiptData.file && receiptData.classification && !receiptData.isProcessing;
+  const canSubmit = receiptData.file && receiptData.classification && expenseName.trim() && !receiptData.isProcessing;
 
   return (
     <MainLayout>
