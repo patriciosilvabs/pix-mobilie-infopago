@@ -359,13 +359,19 @@ export const supabase = {
           ...(options?.headers ?? {}),
         };
 
+        // Use Supabase anon key for apikey header
+        if (supabaseAnonKey) {
+          headers["apikey"] = supabaseAnonKey;
+        }
+
         if (!headers.Authorization && auth.currentUser) {
           const token = await getIdToken(auth.currentUser);
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const functionName = toFirebaseFunctionName(name);
-        const response = await fetch(`${functionsBaseUrl}/${functionName}`, {
+        // Call Supabase Edge Functions directly (keep kebab-case name)
+        const fullUrl = `${supabaseFunctionsUrl}/${name}`;
+        const response = await fetch(fullUrl, {
           method: "POST",
           headers,
           body: JSON.stringify(options?.body ?? {}),
