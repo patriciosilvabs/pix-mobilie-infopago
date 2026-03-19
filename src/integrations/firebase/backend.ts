@@ -284,15 +284,14 @@ class QueryBuilder implements PromiseLike<{ data: any; error: Error | null }> {
   }
 }
 
-const functionsBaseUrl = (
-  import.meta.env.VITE_FIREBASE_FUNCTIONS_BASE_URL ||
-  `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net`
+const supabaseFunctionsUrl = (
+  import.meta.env.VITE_SUPABASE_URL
+    ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`
+    : (import.meta.env.VITE_FIREBASE_FUNCTIONS_BASE_URL ||
+       `https://us-central1-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net`)
 ).replace(/\/$/, "");
 
-function toFirebaseFunctionName(name: string): string {
-  if (!name.includes("-")) return name;
-  return name.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
-}
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "";
 export const supabase = {
   from(table: string) {
     return new QueryBuilder(table);
@@ -360,13 +359,19 @@ export const supabase = {
           ...(options?.headers ?? {}),
         };
 
+        // Use Supabase anon key for apikey header
+        if (supabaseAnonKey) {
+          headers["apikey"] = supabaseAnonKey;
+        }
+
         if (!headers.Authorization && auth.currentUser) {
           const token = await getIdToken(auth.currentUser);
           headers.Authorization = `Bearer ${token}`;
         }
 
-        const functionName = toFirebaseFunctionName(name);
-        const response = await fetch(`${functionsBaseUrl}/${functionName}`, {
+        // Call Supabase Edge Functions directly (keep kebab-case name)
+        const fullUrl = `${supabaseFunctionsUrl}/${name}`;
+        const response = await fetch(fullUrl, {
           method: "POST",
           headers,
           body: JSON.stringify(options?.body ?? {}),
