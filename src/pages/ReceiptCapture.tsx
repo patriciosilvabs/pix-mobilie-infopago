@@ -295,7 +295,11 @@ export default function ReceiptCapture() {
       // Update transaction status to completed
       await supabase
         .from("transactions")
-        .update({ status: "completed" as const, paid_at: new Date().toISOString() })
+        .update({
+          status: "completed" as const,
+          paid_at: new Date().toISOString(),
+          description: expenseName.trim() || null,
+        })
         .eq("id", transactionId);
 
       // Update category on transaction if selected
