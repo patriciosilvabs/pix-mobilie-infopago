@@ -93,22 +93,37 @@ export function usePixPayment() {
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | null>(null);
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Lookup Pix key in DICT
-  const lookupKey = useCallback(async (pix_key: string): Promise<DictLookupResult | null> => {
-    if (!currentCompany || !session) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado e ter uma empresa selecionada.",
-      });
+  const resolvePaymentContext = useCallback(async (showToast = true) => {
+    const {
+      data: { session: latestSession },
+    } = await supabase.auth.getSession();
+    const activeSession = session ?? latestSession;
+    const companyId = currentCompany?.id ?? localStorage.getItem("currentCompanyId");
+
+    if (!activeSession || !companyId) {
+      if (showToast) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Você precisa estar logado e ter uma empresa selecionada.",
+        });
+      }
       return null;
     }
+
+    return { companyId };
+  }, [currentCompany?.id, session, toast]);
+
+  // Lookup Pix key in DICT
+  const lookupKey = useCallback(async (pix_key: string): Promise<DictLookupResult | null> => {
+    const context = await resolvePaymentContext();
+    if (!context) return null;
 
     setIsLookingUp(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('pix-dict-lookup', {
-        body: { company_id: currentCompany.id, pix_key },
+        body: { company_id: context.companyId, pix_key },
       });
 
       if (error) {
@@ -131,7 +146,6 @@ export function usePixPayment() {
       }
 
       return data as DictLookupResult;
-
     } catch (error: any) {
       console.error('[usePixPayment] DICT lookup exception:', error);
       toast({
@@ -143,18 +157,12 @@ export function usePixPayment() {
     } finally {
       setIsLookingUp(false);
     }
-  }, [currentCompany, session, toast]);
+  }, [resolvePaymentContext, toast]);
 
   // Pay via Pix key (DICT)
   const payByKey = useCallback(async (params: PayDictParams): Promise<PaymentResult | null> => {
-    if (!currentCompany || !session) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado e ter uma empresa selecionada.",
-      });
-      return null;
-    }
+    const context = await resolvePaymentContext();
+    if (!context) return null;
 
     setIsProcessing(true);
     const idempotencyKey = crypto.randomUUID();
@@ -162,7 +170,7 @@ export function usePixPayment() {
     try {
       const { data, error } = await supabase.functions.invoke('pix-pay-dict', {
         body: {
-          company_id: currentCompany.id,
+          company_id: context.companyId,
           idempotency_key: idempotencyKey,
           ...params,
         },
@@ -170,10 +178,9 @@ export function usePixPayment() {
 
       if (error) {
         console.error('[usePixPayment] Pay by key error:', error);
-        
-        // Check if it's a network error (connection lost)
+
         const isNetworkError = !error.context || error.message?.includes('Failed to send') || error.message?.includes('fetch');
-        
+
         if (isNetworkError) {
           toast({
             variant: "destructive",
@@ -192,14 +199,20 @@ export function usePixPayment() {
               const body = await res.json();
               let providerMessage = "";
               if (typeof body?.provider_error === 'string') {
-                try { providerMessage = JSON.parse(body.provider_error)?.message || ""; } catch { providerMessage = body.provider_error; }
+                try {
+                  providerMessage = JSON.parse(body.provider_error)?.message || "";
+                } catch {
+                  providerMessage = body.provider_error;
+                }
               } else if (body?.provider_error?.message) {
                 providerMessage = body.provider_error.message;
               }
               errorMessage = body?.error || providerMessage || body?.hint || errorMessage;
             }
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
 
         toast({
           variant: "destructive",
@@ -219,11 +232,10 @@ export function usePixPayment() {
       }
 
       setPaymentData(data);
-      
-      // Auto-generate receipt in background (fallback for webhook)
-      if (data.transaction_id && currentCompany?.id) {
+
+      if (data.transaction_id) {
         supabase.functions.invoke('generate-pix-receipt', {
-          body: { transaction_id: data.transaction_id, company_id: currentCompany.id },
+          body: { transaction_id: data.transaction_id, company_id: context.companyId },
         }).catch(e => console.error('[usePixPayment] Auto-receipt generation failed:', e));
       }
 
@@ -231,9 +243,8 @@ export function usePixPayment() {
         title: "Pagamento iniciado!",
         description: "O pagamento foi enviado para processamento.",
       });
-      
-      return data;
 
+      return data;
     } catch (error: any) {
       console.error('[usePixPayment] Pay by key exception:', error);
       toast({
@@ -245,18 +256,12 @@ export function usePixPayment() {
     } finally {
       setIsProcessing(false);
     }
-  }, [currentCompany, session, toast]);
+  }, [resolvePaymentContext, toast]);
 
   // Pay via QR Code
   const payByQRCode = useCallback(async (params: PayQrcParams): Promise<PaymentResult | null> => {
-    if (!currentCompany || !session) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado e ter uma empresa selecionada.",
-      });
-      return null;
-    }
+    const context = await resolvePaymentContext();
+    if (!context) return null;
 
     setIsProcessing(true);
     const idempotencyKey = crypto.randomUUID();
@@ -264,7 +269,7 @@ export function usePixPayment() {
     try {
       const { data, error } = await supabase.functions.invoke('pix-pay-qrc', {
         body: {
-          company_id: currentCompany.id,
+          company_id: context.companyId,
           idempotency_key: idempotencyKey,
           ...params,
         },
@@ -272,13 +277,13 @@ export function usePixPayment() {
 
       if (error) {
         console.error('[usePixPayment] Pay by QRC error:', error);
-        
+
         const isNetworkError = !error.context || error.message?.includes('Failed to send') || error.message?.includes('fetch');
-        
+
         toast({
           variant: "destructive",
           title: isNetworkError ? "Conexão perdida" : "Erro ao iniciar pagamento Pix",
-          description: isNetworkError 
+          description: isNetworkError
             ? "A conexão caiu durante o processamento. Verifique o extrato antes de tentar novamente."
             : (error.message || "Tente novamente mais tarde."),
           duration: isNetworkError ? 10000 : 5000,
@@ -296,14 +301,13 @@ export function usePixPayment() {
       }
 
       setPaymentData(data);
-      
+
       toast({
         title: "Pagamento iniciado!",
         description: "O pagamento via QR Code foi enviado para processamento.",
       });
-      
-      return data;
 
+      return data;
     } catch (error: any) {
       console.error('[usePixPayment] Pay by QRC exception:', error);
       toast({
@@ -315,18 +319,17 @@ export function usePixPayment() {
     } finally {
       setIsProcessing(false);
     }
-  }, [currentCompany, session, toast]);
+  }, [resolvePaymentContext, toast]);
 
   // Get QR Code info before paying
   const getQRCodeInfo = useCallback(async (params: QRCInfoParams): Promise<QRCInfoResult | null> => {
-    if (!currentCompany || !session) {
-      return null;
-    }
+    const context = await resolvePaymentContext(false);
+    if (!context) return null;
 
     try {
       const { data, error } = await supabase.functions.invoke('pix-qrc-info', {
         body: {
-          company_id: currentCompany.id,
+          company_id: context.companyId,
           ...params,
         },
       });
@@ -337,25 +340,25 @@ export function usePixPayment() {
       }
 
       return data;
-
     } catch (error: any) {
       console.error('[usePixPayment] QRC info exception:', error);
       return null;
     }
-  }, [currentCompany, session]);
+  }, [resolvePaymentContext]);
 
   // Check payment status
   const checkStatus = useCallback(async (
-    endToEndIdOrTransactionId: string, 
+    endToEndIdOrTransactionId: string,
     isTransactionId = false
   ): Promise<PaymentStatus | null> => {
-    if (!currentCompany || !session) return null;
+    const context = await resolvePaymentContext(false);
+    if (!context) return null;
 
     setIsChecking(true);
 
     try {
-      const body: any = { company_id: currentCompany.id };
-      
+      const body: any = { company_id: context.companyId };
+
       if (isTransactionId) {
         body.transaction_id = endToEndIdOrTransactionId;
       } else {
@@ -373,14 +376,13 @@ export function usePixPayment() {
 
       setPaymentStatus(data);
       return data;
-
     } catch (error: any) {
       console.error('[usePixPayment] Check status exception:', error);
       return null;
     } finally {
       setIsChecking(false);
     }
-  }, [currentCompany, session]);
+  }, [resolvePaymentContext]);
 
   // Start polling for payment status
   const startPolling = useCallback((endToEndId: string, intervalMs = 5000, maxAttempts = 60) => {
@@ -416,14 +418,10 @@ export function usePixPayment() {
       if (attempts >= maxAttempts) {
         console.log('[usePixPayment] Max polling attempts reached');
         stopPolling();
-        return;
       }
     };
 
-    // Initial check
     poll();
-
-    // Start interval
     pollingRef.current = setInterval(poll, intervalMs);
   }, [checkStatus, toast]);
 
@@ -440,18 +438,12 @@ export function usePixPayment() {
     endToEndIdOrTransactionId: string,
     isTransactionId = false
   ): Promise<ReceiptResult | null> => {
-    if (!currentCompany || !session) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: "Você precisa estar logado.",
-      });
-      return null;
-    }
+    const context = await resolvePaymentContext();
+    if (!context) return null;
 
     try {
-      const body: any = { company_id: currentCompany.id };
-      
+      const body: any = { company_id: context.companyId };
+
       if (isTransactionId) {
         body.transaction_id = endToEndIdOrTransactionId;
       } else {
@@ -473,7 +465,6 @@ export function usePixPayment() {
       }
 
       return data;
-
     } catch (error: any) {
       console.error('[usePixPayment] Get receipt exception:', error);
       toast({
@@ -483,7 +474,7 @@ export function usePixPayment() {
       });
       return null;
     }
-  }, [currentCompany, session, toast]);
+  }, [resolvePaymentContext, toast]);
 
   // Download receipt as PDF file
   const downloadReceipt = useCallback(async (
@@ -491,9 +482,8 @@ export function usePixPayment() {
     isTransactionId = false
   ) => {
     const receipt = await getReceipt(endToEndIdOrTransactionId, isTransactionId);
-    
+
     if (receipt?.pdf_base64) {
-      // Convert base64 to blob and download
       const byteCharacters = atob(receipt.pdf_base64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -501,7 +491,7 @@ export function usePixPayment() {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'application/pdf' });
-      
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -510,7 +500,7 @@ export function usePixPayment() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       toast({
         title: "Comprovante baixado!",
         description: "O PDF foi salvo na pasta de downloads.",
@@ -520,7 +510,12 @@ export function usePixPayment() {
 
   // Request refund
   const requestRefund = useCallback(async (transactionId: string, valor?: number, motivo?: string) => {
-    if (!session) {
+    const {
+      data: { session: latestSession },
+    } = await supabase.auth.getSession();
+    const activeSession = session ?? latestSession;
+
+    if (!activeSession) {
       toast({
         variant: "destructive",
         title: "Erro",
@@ -556,7 +551,6 @@ export function usePixPayment() {
       }
 
       return data;
-
     } catch (error: any) {
       console.error('[usePixPayment] Refund exception:', error);
       toast({
@@ -599,4 +593,3 @@ export function usePixPayment() {
     requestRefund,
   };
 }
-
