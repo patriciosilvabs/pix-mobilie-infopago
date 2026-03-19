@@ -57,6 +57,9 @@ export default function ReceiptCapture() {
   const [categorySearch, setCategorySearch] = useState("");
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [categoryUsageCounts, setCategoryUsageCounts] = useState<Record<string, number>>({});
+  const [expenseName, setExpenseName] = useState("");
+  const [descriptionSuggestions, setDescriptionSuggestions] = useState<{ name: string; count: number }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     if (!currentCompany) return;
