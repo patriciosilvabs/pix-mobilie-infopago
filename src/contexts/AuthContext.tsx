@@ -29,7 +29,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const OWNER_EMAIL = "patriciobarbosadasilva@gmail.com";
-const OWNER_UID = "vgvQbMGYApNMd0bgCBBE7BACkL63";
+const OWNER_UID = "ZWFwFMVxq0Tk24ttmVDS8BRdUBt1";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
